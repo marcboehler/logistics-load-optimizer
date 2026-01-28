@@ -1,32 +1,54 @@
 import { useState } from 'react'
 import Scene3D from './components/Scene3D'
 import InputPanel from './components/InputPanel'
+import Header from './components/Header'
+import { LanguageProvider } from './i18n/LanguageContext'
+import { fillPalletWithProducts, calculateTotalWeight } from './utils/palletStacking'
 
-function App() {
-  const [packages, setPackages] = useState([
-    { id: 1, length: 400, width: 400, height: 400, weight: 10, color: '#3b82f6' }
-  ])
+function AppContent() {
+  const [packages, setPackages] = useState([])
 
-  const addPackage = (newPackage) => {
-    setPackages([...packages, {
-      ...newPackage,
-      id: Date.now(),
-      color: `hsl(${Math.random() * 360}, 70%, 50%)`
-    }])
+  const handleFillPallet = (quantity) => {
+    const placedPackages = fillPalletWithProducts(quantity)
+    setPackages(placedPackages)
   }
 
-  return (
-    <div className="flex h-screen w-screen bg-gray-900">
-      {/* Linke Seite: Eingabemaske */}
-      <div className="w-80 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
-        <InputPanel onAddPackage={addPackage} packages={packages} />
-      </div>
+  const handleClearPallet = () => {
+    setPackages([])
+  }
 
-      {/* Rechte Seite: 3D-Visualisierung */}
-      <div className="flex-1">
-        <Scene3D packages={packages} />
+  const totalWeight = calculateTotalWeight(packages)
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-gray-900">
+      {/* Header mit Language Switcher */}
+      <Header />
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Linke Seite: Eingabemaske */}
+        <div className="w-80 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
+          <InputPanel
+            packages={packages}
+            onFillPallet={handleFillPallet}
+            onClearPallet={handleClearPallet}
+            totalWeight={totalWeight}
+          />
+        </div>
+
+        {/* Rechte Seite: 3D-Visualisierung */}
+        <div className="flex-1">
+          <Scene3D packages={packages} />
+        </div>
       </div>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppContent />
+    </LanguageProvider>
   )
 }
 

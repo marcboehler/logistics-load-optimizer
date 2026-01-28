@@ -1,150 +1,112 @@
 import { useState } from 'react'
+import { useLanguage } from '../i18n/LanguageContext'
 
-function InputPanel({ onAddPackage, packages }) {
-  const [formData, setFormData] = useState({
-    length: 400,
-    width: 400,
-    height: 400,
-    weight: 10
-  })
+function InputPanel({ packages, onFillPallet, onClearPallet, totalWeight }) {
+  const { t } = useLanguage()
+  const [quantity, setQuantity] = useState(10)
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: parseFloat(value) || 0
-    }))
-  }
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    onAddPackage(formData)
-    setFormData({
-      length: 400,
-      width: 400,
-      height: 400,
-      weight: 10
-    })
+  const handleFillPallet = () => {
+    onFillPallet(quantity)
   }
 
   return (
     <div className="text-white">
-      <h1 className="text-xl font-bold mb-6 text-blue-400">
-        Logistics Load Optimizer
-      </h1>
-
       {/* Paletten-Info */}
       <div className="mb-6 p-3 bg-gray-700 rounded-lg">
-        <h2 className="text-sm font-semibold text-gray-300 mb-2">Europalette</h2>
+        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('palletInfo')}</h2>
         <div className="text-xs text-gray-400 space-y-1">
-          <p>Länge: 1200 mm</p>
-          <p>Breite: 800 mm</p>
-          <p>Höhe: 144 mm</p>
+          <p>{t('length')}: 1200 {t('mm')}</p>
+          <p>{t('width')}: 800 {t('mm')}</p>
+          <p>{t('height')}: 144 {t('mm')}</p>
         </div>
       </div>
 
-      {/* Eingabeformular */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <h2 className="text-sm font-semibold text-gray-300">Neues Paket hinzufügen</h2>
+      {/* Fill Pallet Section */}
+      <div className="mb-6 p-4 bg-gray-700/80 rounded-lg border border-gray-600">
+        <h2 className="text-sm font-semibold text-gray-300 mb-3">{t('fillPallet')}</h2>
 
-        <div>
+        <div className="mb-3">
           <label className="block text-xs text-gray-400 mb-1">
-            Länge (mm)
+            {t('quantity')}
           </label>
           <input
             type="number"
-            name="length"
-            value={formData.length}
-            onChange={handleChange}
+            value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
             min="1"
-            max="1200"
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+            max="50"
+            className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
 
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">
-            Breite (mm)
-          </label>
-          <input
-            type="number"
-            name="width"
-            value={formData.width}
-            onChange={handleChange}
-            min="1"
-            max="800"
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
-          />
+        <div className="flex gap-2">
+          <button
+            onClick={handleFillPallet}
+            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
+          >
+            {t('fillPallet')}
+          </button>
+          <button
+            onClick={onClearPallet}
+            className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors"
+          >
+            {t('clearPallet')}
+          </button>
         </div>
+      </div>
 
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">
-            Höhe (mm)
-          </label>
-          <input
-            type="number"
-            name="height"
-            value={formData.height}
-            onChange={handleChange}
-            min="1"
-            max="2000"
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
-          />
+      {/* Stats */}
+      <div className="mb-6 p-3 bg-blue-900/30 rounded-lg border border-blue-800/50">
+        <div className="grid grid-cols-2 gap-3 text-center">
+          <div>
+            <p className="text-2xl font-bold text-blue-400">{packages.length}</p>
+            <p className="text-xs text-gray-400">{t('totalPackages')}</p>
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-green-400">{totalWeight.toFixed(1)}</p>
+            <p className="text-xs text-gray-400">{t('totalWeight')} ({t('kg')})</p>
+          </div>
         </div>
-
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">
-            Gewicht (kg)
-          </label>
-          <input
-            type="number"
-            name="weight"
-            value={formData.weight}
-            onChange={handleChange}
-            min="0.1"
-            step="0.1"
-            className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md transition-colors"
-        >
-          Paket hinzufügen
-        </button>
-      </form>
+      </div>
 
       {/* Paketliste */}
-      <div className="mt-6">
+      <div className="mb-6">
         <h2 className="text-sm font-semibold text-gray-300 mb-2">
-          Pakete auf Palette ({packages.length})
+          {t('packagesOnPallet')} ({packages.length})
         </h2>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
-          {packages.map((pkg, index) => (
+        <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+          {packages.map((pkg) => (
             <div
               key={pkg.id}
               className="p-2 bg-gray-700 rounded text-xs flex items-center gap-2"
             >
               <div
-                className="w-4 h-4 rounded"
+                className="w-3 h-3 rounded flex-shrink-0"
                 style={{ backgroundColor: pkg.color }}
               />
-              <span className="text-gray-300">
-                {pkg.length}x{pkg.width}x{pkg.height} mm, {pkg.weight} kg
+              <span className="text-gray-300 truncate flex-1" title={pkg.name}>
+                {pkg.name}
+              </span>
+              <span className="text-gray-500 flex-shrink-0">
+                {pkg.weight}{t('kg')}
               </span>
             </div>
           ))}
+          {packages.length === 0 && (
+            <p className="text-xs text-gray-500 italic py-2">
+              {t('quantity')}: 0
+            </p>
+          )}
         </div>
       </div>
 
       {/* Anleitung */}
-      <div className="mt-6 p-3 bg-gray-700/50 rounded-lg">
-        <h2 className="text-sm font-semibold text-gray-300 mb-2">Steuerung</h2>
+      <div className="p-3 bg-gray-700/50 rounded-lg">
+        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('controls')}</h2>
         <ul className="text-xs text-gray-400 space-y-1">
-          <li>• Linke Maustaste: Drehen</li>
-          <li>• Rechte Maustaste: Verschieben</li>
-          <li>• Mausrad: Zoomen</li>
+          <li>• {t('leftMouse')}</li>
+          <li>• {t('rightMouse')}</li>
+          <li>• {t('scroll')}</li>
         </ul>
       </div>
     </div>
