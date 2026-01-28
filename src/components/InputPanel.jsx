@@ -7,6 +7,7 @@ function InputPanel({
   onClearPallet,
   totalWeight,
   totalHeight,
+  volumeUtilization,
   maxHeight,
   setMaxHeight,
   maxWeight,
@@ -135,6 +136,18 @@ function InputPanel({
 
         {/* Utilization Bars */}
         <div className="space-y-2">
+          <div>
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>{t('volumeUtilization')}</span>
+              <span className="font-semibold text-purple-400">{volumeUtilization.toFixed(1)}%</span>
+            </div>
+            <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-purple-500 transition-all duration-300"
+                style={{ width: `${Math.min(volumeUtilization, 100)}%` }}
+              />
+            </div>
+          </div>
           <div>
             <div className="flex justify-between text-xs text-gray-400 mb-1">
               <span>{t('weightUtilization')}</span>

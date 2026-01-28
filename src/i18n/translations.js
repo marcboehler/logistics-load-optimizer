@@ -40,6 +40,7 @@ export const translations = {
     palletUtilization: 'Auslastung',
     weightUtilization: 'Gewichtsauslastung',
     heightUtilization: 'Höhenauslastung',
+    volumeUtilization: 'Volumen-Ausnutzung',
 
     // Legend
     legend: 'Legende',
@@ -91,6 +92,7 @@ export const translations = {
     palletUtilization: 'Utilization',
     weightUtilization: 'Weight Utilization',
     heightUtilization: 'Height Utilization',
+    volumeUtilization: 'Volume Utilization',
 
     // Legend
     legend: 'Legend',

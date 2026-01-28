@@ -17,253 +17,344 @@ const MAX_PACKAGE_WEIGHT = 20
  * Heavy (20kg): #8B0000 (Dark Red)
  */
 export const getHeatmapColor = (weight) => {
-  // Clamp weight between 0 and MAX_PACKAGE_WEIGHT
   const normalizedWeight = Math.min(Math.max(weight, 0), MAX_PACKAGE_WEIGHT) / MAX_PACKAGE_WEIGHT
-
-  // Light Yellow: RGB(255, 255, 224)
-  // Dark Red: RGB(139, 0, 0)
   const r = Math.round(255 - (255 - 139) * normalizedWeight)
   const g = Math.round(255 - 255 * normalizedWeight)
   const b = Math.round(224 - 224 * normalizedWeight)
-
   return `rgb(${r}, ${g}, ${b})`
 }
 
 /**
- * Convert hex color to RGB object
+ * Calculate volume of a carton in mm³
  */
-export const hexToRgb = (hex) => {
-  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-  return result ? {
-    r: parseInt(result[1], 16),
-    g: parseInt(result[2], 16),
-    b: parseInt(result[3], 16)
-  } : { r: 255, g: 255, b: 224 }
+const getCartonVolume = (carton) => {
+  return carton.length * carton.width * carton.height
 }
 
 /**
- * Get RGB values for heatmap color
+ * Sort products by Volume (descending) then by Weight (descending)
+ * Larger and heavier items get placed first (at the bottom)
  */
-export const getHeatmapColorRGB = (weight) => {
-  const normalizedWeight = Math.min(Math.max(weight, 0), MAX_PACKAGE_WEIGHT) / MAX_PACKAGE_WEIGHT
-
-  return {
-    r: (255 - (255 - 139) * normalizedWeight) / 255,
-    g: (255 - 255 * normalizedWeight) / 255,
-    b: (224 - 224 * normalizedWeight) / 255
-  }
-}
-
-// Sort products by weight (descending) and size for stacking
-export const sortProductsForStacking = (products) => {
+export const sortProductsForAdvancedPacking = (products) => {
   return [...products].sort((a, b) => {
-    // Primary: sort by weight (heavy first - goes to bottom)
-    const weightDiff = b.weight - a.weight
-    if (Math.abs(weightDiff) > 0.5) return weightDiff
-
-    // Secondary: sort by carton volume (larger first)
     const cartonA = getCartonById(a.cartonId)
     const cartonB = getCartonById(b.cartonId)
-    if (cartonA && cartonB) {
-      const volumeA = cartonA.length * cartonA.width * cartonA.height
-      const volumeB = cartonB.length * cartonB.width * cartonB.height
-      return volumeB - volumeA
-    }
 
-    return 0
+    if (!cartonA || !cartonB) return 0
+
+    // Primary: sort by volume (larger first)
+    const volumeA = getCartonVolume(cartonA)
+    const volumeB = getCartonVolume(cartonB)
+    const volumeDiff = volumeB - volumeA
+
+    if (Math.abs(volumeDiff) > 1000) return volumeDiff
+
+    // Secondary: sort by weight (heavier first)
+    return b.weight - a.weight
   })
 }
 
 /**
- * Calculate package positions with dynamic height and weight limits
- * @param {Array} sortedProducts - Products sorted by weight (heavy first)
- * @param {number} maxHeightMm - Maximum stack height in mm (from pallet surface)
- * @param {number} maxWeightKg - Maximum total weight in kg
+ * Check if two 3D bounding boxes overlap
  */
-export const calculatePackagePositions = (sortedProducts, maxHeightMm = 2300, maxWeightKg = 700) => {
-  const placedPackages = []
-  let currentTotalWeight = 0
-  let currentMaxHeight = PALLET.height // Start from pallet surface
+const boxesOverlap = (box1, box2) => {
+  // box format: { x, y, z, length, width, height }
+  // x, y, z are the minimum corners
 
-  // Track occupied space per layer
-  let layers = [{ y: PALLET.height, spaces: [{ x: 0, z: 0, w: PALLET.length, d: PALLET.width }] }]
+  const overlapX = box1.x < box2.x + box2.length && box1.x + box1.length > box2.x
+  const overlapY = box1.y < box2.y + box2.height && box1.y + box1.height > box2.y
+  const overlapZ = box1.z < box2.z + box2.width && box1.z + box1.width > box2.z
+
+  return overlapX && overlapY && overlapZ
+}
+
+/**
+ * Check if a box at position collides with any placed boxes
+ */
+const hasCollision = (newBox, placedBoxes) => {
+  for (const placed of placedBoxes) {
+    if (boxesOverlap(newBox, placed)) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
+ * Check if box fits within pallet boundaries
+ */
+const fitsOnPallet = (box) => {
+  return (
+    box.x >= 0 &&
+    box.z >= 0 &&
+    box.x + box.length <= PALLET.length &&
+    box.z + box.width <= PALLET.width
+  )
+}
+
+/**
+ * Check if a box has sufficient support below it (gravity rule)
+ * A box must either be on the pallet floor OR have support from boxes below
+ */
+const hasSupport = (box, placedBoxes) => {
+  // On pallet floor - always supported
+  if (Math.abs(box.y - PALLET.height) < 1) {
+    return true
+  }
+
+  // Find all boxes that could potentially support this one
+  const supportingBoxes = placedBoxes.filter(placed => {
+    // Box below must have its top at our bottom
+    const topOfPlaced = placed.y + placed.height
+    if (Math.abs(topOfPlaced - box.y) > 1) return false
+
+    // Check XZ overlap for support
+    const overlapX = box.x < placed.x + placed.length && box.x + box.length > placed.x
+    const overlapZ = box.z < placed.z + placed.width && box.z + box.width > placed.z
+
+    return overlapX && overlapZ
+  })
+
+  if (supportingBoxes.length === 0) return false
+
+  // Calculate total support area
+  let totalSupportArea = 0
+  const boxArea = box.length * box.width
+
+  for (const support of supportingBoxes) {
+    // Calculate overlap area
+    const overlapMinX = Math.max(box.x, support.x)
+    const overlapMaxX = Math.min(box.x + box.length, support.x + support.length)
+    const overlapMinZ = Math.max(box.z, support.z)
+    const overlapMaxZ = Math.min(box.z + box.width, support.z + support.width)
+
+    if (overlapMaxX > overlapMinX && overlapMaxZ > overlapMinZ) {
+      totalSupportArea += (overlapMaxX - overlapMinX) * (overlapMaxZ - overlapMinZ)
+    }
+  }
+
+  // Require at least 50% support
+  return totalSupportArea >= boxArea * 0.5
+}
+
+/**
+ * Find the lowest valid Y position for a box at given XZ coordinates
+ * Implements gravity - box drops until it hits support
+ */
+const findLowestY = (x, z, length, width, height, placedBoxes, maxHeightMm) => {
+  let lowestY = PALLET.height // Start at pallet surface
+
+  // Find the highest point of any box that overlaps in XZ
+  for (const placed of placedBoxes) {
+    // Check XZ overlap
+    const overlapX = x < placed.x + placed.length && x + length > placed.x
+    const overlapZ = z < placed.z + placed.width && z + width > placed.z
+
+    if (overlapX && overlapZ) {
+      const topOfPlaced = placed.y + placed.height
+      if (topOfPlaced > lowestY) {
+        lowestY = topOfPlaced
+      }
+    }
+  }
+
+  // Check height limit
+  if (lowestY + height > PALLET.height + maxHeightMm) {
+    return -1 // Can't place here
+  }
+
+  return lowestY
+}
+
+/**
+ * Generate candidate positions for placing a box
+ * Uses extreme points heuristic
+ */
+const generateCandidatePositions = (placedBoxes) => {
+  const positions = [{ x: 0, z: 0 }] // Always try origin
+
+  for (const box of placedBoxes) {
+    // Add positions at corners of placed boxes
+    positions.push(
+      { x: box.x + box.length, z: box.z },           // Right of box
+      { x: box.x, z: box.z + box.width },            // Behind box
+      { x: box.x + box.length, z: box.z + box.width } // Diagonal
+    )
+  }
+
+  // Filter out duplicates and invalid positions
+  const unique = []
+  const seen = new Set()
+
+  for (const pos of positions) {
+    const key = `${Math.round(pos.x)},${Math.round(pos.z)}`
+    if (!seen.has(key) && pos.x >= 0 && pos.z >= 0 && pos.x < PALLET.length && pos.z < PALLET.width) {
+      seen.add(key)
+      unique.push(pos)
+    }
+  }
+
+  // Sort by position (prefer bottom-left)
+  unique.sort((a, b) => {
+    const distA = a.x + a.z
+    const distB = b.x + b.z
+    return distA - distB
+  })
+
+  return unique
+}
+
+/**
+ * Try to place a box at any valid position with rotation
+ */
+const tryPlaceBox = (length, width, height, placedBoxes, maxHeightMm) => {
+  const positions = generateCandidatePositions(placedBoxes)
+
+  // Try both orientations
+  const orientations = [
+    { l: length, w: width },
+    { l: width, w: length }
+  ]
+
+  let bestPlacement = null
+  let bestScore = Infinity
+
+  for (const pos of positions) {
+    for (const orient of orientations) {
+      const testBox = {
+        x: pos.x,
+        z: pos.z,
+        length: orient.l,
+        width: orient.w,
+        height: height
+      }
+
+      // Check if fits on pallet
+      if (!fitsOnPallet(testBox)) continue
+
+      // Find lowest valid Y
+      const y = findLowestY(pos.x, pos.z, orient.l, orient.w, height, placedBoxes, maxHeightMm)
+      if (y < 0) continue
+
+      testBox.y = y
+
+      // Check collision
+      if (hasCollision(testBox, placedBoxes)) continue
+
+      // Check support
+      if (!hasSupport(testBox, placedBoxes)) continue
+
+      // Score: prefer lower positions and positions closer to origin
+      const score = y * 10 + pos.x + pos.z
+
+      if (score < bestScore) {
+        bestScore = score
+        bestPlacement = {
+          x: pos.x,
+          y: y,
+          z: pos.z,
+          length: orient.l,
+          width: orient.w,
+          height: height
+        }
+      }
+    }
+  }
+
+  return bestPlacement
+}
+
+/**
+ * Advanced 3D Bin Packing Algorithm with rotation and gravity
+ */
+export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 2300, maxWeightKg = 700) => {
+  const placedPackages = []
+  const placedBoxes = [] // Simplified box representation for collision
+  let currentTotalWeight = 0
+  let totalVolume = 0
 
   for (const product of sortedProducts) {
     const carton = getCartonById(product.cartonId)
     if (!carton) continue
 
-    // Check weight limit - stop if adding this package would exceed limit
+    // Check weight limit
     if (currentTotalWeight + product.weight > maxWeightKg) {
-      continue // Skip this package, try next (lighter) one
+      continue
     }
 
+    // Try to place the box
+    const placement = tryPlaceBox(
+      carton.length,
+      carton.width,
+      carton.height,
+      placedBoxes,
+      maxHeightMm
+    )
+
+    if (!placement) {
+      continue // Can't place this package
+    }
+
+    // Add to placed boxes
+    placedBoxes.push(placement)
+
+    // Create package with center position for Three.js
     const pkg = {
       ...product,
       length: carton.length,
       width: carton.width,
       height: carton.height,
-      color: getHeatmapColor(product.weight)
-    }
-
-    // Try to place in existing layers
-    let placed = false
-
-    for (let layerIdx = 0; layerIdx < layers.length && !placed; layerIdx++) {
-      const layer = layers[layerIdx]
-
-      // Check if this layer + package height would exceed height limit
-      const potentialHeight = layer.y + pkg.height
-      if (potentialHeight > maxHeightMm + PALLET.height) {
-        continue // Skip this layer, try next
-      }
-
-      for (let spaceIdx = 0; spaceIdx < layer.spaces.length && !placed; spaceIdx++) {
-        const space = layer.spaces[spaceIdx]
-
-        // Try both orientations
-        const orientations = [
-          { l: pkg.length, w: pkg.width },
-          { l: pkg.width, w: pkg.length }
-        ]
-
-        for (const orient of orientations) {
-          if (orient.l <= space.w && orient.w <= space.d) {
-            // Place package
-            const packageY = layer.y + pkg.height / 2
-
-            placedPackages.push({
-              ...pkg,
-              position: {
-                x: space.x + orient.l / 2,
-                y: packageY,
-                z: space.z + orient.w / 2
-              },
-              dimensions: {
-                length: orient.l,
-                width: orient.w,
-                height: pkg.height
-              }
-            })
-
-            // Update weight and height tracking
-            currentTotalWeight += product.weight
-            currentMaxHeight = Math.max(currentMaxHeight, packageY + pkg.height / 2)
-
-            // Update remaining spaces (guillotine cut)
-            const newSpaces = []
-
-            // Right space
-            if (space.w - orient.l > 50) {
-              newSpaces.push({
-                x: space.x + orient.l,
-                z: space.z,
-                w: space.w - orient.l,
-                d: space.d
-              })
-            }
-
-            // Top space (depth)
-            if (space.d - orient.w > 50) {
-              newSpaces.push({
-                x: space.x,
-                z: space.z + orient.w,
-                w: orient.l,
-                d: space.d - orient.w
-              })
-            }
-
-            // Remove used space and add new ones
-            layer.spaces.splice(spaceIdx, 1, ...newSpaces)
-            placed = true
-            break
-          }
-        }
+      color: getHeatmapColor(product.weight),
+      position: {
+        x: placement.x + placement.length / 2,
+        y: placement.y + placement.height / 2,
+        z: placement.z + placement.width / 2
+      },
+      dimensions: {
+        length: placement.length,
+        width: placement.width,
+        height: placement.height
       }
     }
 
-    // If not placed in existing layer, try to create new layer
-    if (!placed) {
-      const topY = placedPackages.length > 0
-        ? Math.max(...placedPackages.map(p => p.position.y + p.dimensions.height / 2))
-        : PALLET.height
-
-      // Check if new layer would exceed height limit
-      if (topY + pkg.height > maxHeightMm + PALLET.height) {
-        continue // Can't place this package, skip it
-      }
-
-      layers.push({
-        y: topY,
-        spaces: [{ x: 0, z: 0, w: PALLET.length, d: PALLET.width }]
-      })
-
-      // Place in new layer
-      placedPackages.push({
-        ...pkg,
-        position: {
-          x: pkg.length / 2,
-          y: topY + pkg.height / 2,
-          z: pkg.width / 2
-        },
-        dimensions: {
-          length: pkg.length,
-          width: pkg.width,
-          height: pkg.height
-        }
-      })
-
-      // Update weight and height tracking
-      currentTotalWeight += product.weight
-      currentMaxHeight = Math.max(currentMaxHeight, topY + pkg.height)
-
-      // Update space
-      const newLayer = layers[layers.length - 1]
-      newLayer.spaces = []
-
-      if (PALLET.length - pkg.length > 50) {
-        newLayer.spaces.push({
-          x: pkg.length,
-          z: 0,
-          w: PALLET.length - pkg.length,
-          d: PALLET.width
-        })
-      }
-      if (PALLET.width - pkg.width > 50) {
-        newLayer.spaces.push({
-          x: 0,
-          z: pkg.width,
-          w: pkg.length,
-          d: PALLET.width - pkg.width
-        })
-      }
-    }
+    placedPackages.push(pkg)
+    currentTotalWeight += product.weight
+    totalVolume += carton.length * carton.width * carton.height
   }
+
+  // Calculate max height
+  const maxHeight = placedBoxes.length > 0
+    ? Math.max(...placedBoxes.map(b => b.y + b.height)) - PALLET.height
+    : 0
+
+  // Calculate volume utilization
+  const usedVolume = totalVolume
+  const availableVolume = PALLET.length * PALLET.width * (maxHeight > 0 ? maxHeight : 1)
+  const volumeUtilization = availableVolume > 0 ? (usedVolume / availableVolume) * 100 : 0
 
   return {
     packages: placedPackages,
     totalWeight: currentTotalWeight,
-    maxHeight: currentMaxHeight - PALLET.height // Height above pallet surface
+    maxHeight: maxHeight,
+    totalVolume: totalVolume,
+    volumeUtilization: Math.min(volumeUtilization, 100)
   }
 }
 
 /**
- * Main function to fill pallet with random products respecting limits
- * @param {number} count - Number of packages to try to place
- * @param {number} maxHeightM - Maximum height in meters
- * @param {number} maxWeightKg - Maximum weight in kg
+ * Main function to fill pallet with random products using advanced packing
  */
 export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 700) => {
-  // Convert height from meters to mm
   const maxHeightMm = maxHeightM * 1000
 
   // Get random products
   const randomProducts = getRandomProducts(count)
 
-  // Sort by weight/size (heavy/large at bottom)
-  const sortedProducts = sortProductsForStacking(randomProducts)
+  // Sort by volume and weight (larger/heavier first)
+  const sortedProducts = sortProductsForAdvancedPacking(randomProducts)
 
-  // Calculate positions with limits
-  const result = calculatePackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
+  // Calculate positions with advanced algorithm
+  const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
 
   return result
 }
