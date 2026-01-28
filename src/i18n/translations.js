@@ -11,6 +11,13 @@ export const translations = {
     height: 'Höhe',
     weight: 'Gewicht',
 
+    // Container
+    container: 'Container',
+    containerType: 'Container-Typ',
+    noContainer: 'Kein Container',
+    container20ft: '20ft Container',
+    container40ft: '40ft Container',
+
     // Input Panel
     addPackage: 'Paket hinzufügen',
     newPackage: 'Neues Paket hinzufügen',
@@ -27,12 +34,6 @@ export const translations = {
     maxWeight: 'Max. Palettengewicht',
     meter: 'm',
 
-    // Controls
-    controls: 'Steuerung',
-    leftMouse: 'Linke Maustaste: Drehen',
-    rightMouse: 'Rechte Maustaste: Verschieben',
-    scroll: 'Mausrad: Zoomen',
-
     // Stats
     totalWeight: 'Gesamtgewicht',
     totalPackages: 'Anzahl Pakete',
@@ -41,6 +42,11 @@ export const translations = {
     weightUtilization: 'Gewichtsauslastung',
     heightUtilization: 'Höhenauslastung',
     volumeUtilization: 'Volumen-Ausnutzung',
+
+    // Package List
+    packageList: 'Paketliste',
+    cartonId: 'Karton-ID',
+    noPackages: 'Keine Pakete geladen',
 
     // Legend
     legend: 'Legende',
@@ -63,6 +69,13 @@ export const translations = {
     height: 'Height',
     weight: 'Weight',
 
+    // Container
+    container: 'Container',
+    containerType: 'Container Type',
+    noContainer: 'No Container',
+    container20ft: '20ft Container',
+    container40ft: '40ft Container',
+
     // Input Panel
     addPackage: 'Add Package',
     newPackage: 'Add New Package',
@@ -79,12 +92,6 @@ export const translations = {
     maxWeight: 'Max. Pallet Weight',
     meter: 'm',
 
-    // Controls
-    controls: 'Controls',
-    leftMouse: 'Left Mouse: Rotate',
-    rightMouse: 'Right Mouse: Pan',
-    scroll: 'Scroll: Zoom',
-
     // Stats
     totalWeight: 'Total Weight',
     totalPackages: 'Total Packages',
@@ -93,6 +100,11 @@ export const translations = {
     weightUtilization: 'Weight Utilization',
     heightUtilization: 'Height Utilization',
     volumeUtilization: 'Volume Utilization',
+
+    // Package List
+    packageList: 'Package List',
+    cartonId: 'Carton ID',
+    noPackages: 'No packages loaded',
 
     // Legend
     legend: 'Legend',

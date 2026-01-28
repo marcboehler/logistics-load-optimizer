@@ -11,7 +11,9 @@ function InputPanel({
   maxHeight,
   setMaxHeight,
   maxWeight,
-  setMaxWeight
+  setMaxWeight,
+  containerType,
+  setContainerType
 }) {
   const { t } = useLanguage()
   const [quantity, setQuantity] = useState(10)
@@ -25,15 +27,19 @@ function InputPanel({
   const heightUtilization = maxHeight > 0 ? (totalHeight / (maxHeight * 1000)) * 100 : 0
 
   return (
-    <div className="text-white">
-      {/* Paletten-Info */}
+    <div className="text-white flex flex-col h-full">
+      {/* Container Selection */}
       <div className="mb-4 p-3 bg-gray-700 rounded-lg">
-        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('palletInfo')}</h2>
-        <div className="text-xs text-gray-400 space-y-1">
-          <p>{t('length')}: 1200 {t('mm')}</p>
-          <p>{t('width')}: 800 {t('mm')}</p>
-          <p>{t('height')}: 144 {t('mm')}</p>
-        </div>
+        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('containerType')}</h2>
+        <select
+          value={containerType}
+          onChange={(e) => setContainerType(e.target.value)}
+          className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
+        >
+          <option value="none">{t('noContainer')}</option>
+          <option value="20ft">{t('container20ft')}</option>
+          <option value="40ft">{t('container40ft')}</option>
+        </select>
       </div>
 
       {/* Limits Section */}
@@ -194,45 +200,44 @@ function InputPanel({
         </div>
       </div>
 
-      {/* Paketliste */}
-      <div className="mb-4">
+      {/* Package List - Scrollable */}
+      <div className="flex-1 min-h-0 flex flex-col">
         <h2 className="text-sm font-semibold text-gray-300 mb-2">
-          {t('packagesOnPallet')} ({packages.length})
+          {t('packageList')} ({packages.length})
         </h2>
-        <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-          {packages.map((pkg) => (
-            <div
-              key={pkg.id}
-              className="p-2 bg-gray-700 rounded text-xs flex items-center gap-2"
-            >
-              <div
-                className="w-3 h-3 rounded flex-shrink-0"
-                style={{ backgroundColor: pkg.color }}
-              />
-              <span className="text-gray-300 truncate flex-1" title={pkg.name}>
-                {pkg.name}
-              </span>
-              <span className="text-gray-500 flex-shrink-0">
-                {pkg.weight}{t('kg')}
-              </span>
-            </div>
-          ))}
-          {packages.length === 0 && (
-            <p className="text-xs text-gray-500 italic py-2">
-              {t('quantity')}: 0
+        <div className="flex-1 overflow-y-auto bg-gray-700/30 rounded-lg p-2">
+          {packages.length === 0 ? (
+            <p className="text-xs text-gray-500 italic py-4 text-center">
+              {t('noPackages')}
             </p>
+          ) : (
+            <div className="space-y-1">
+              {packages.map((pkg, index) => (
+                <div
+                  key={pkg.id}
+                  className="p-2 bg-gray-700 rounded text-xs flex items-center gap-2"
+                >
+                  <div
+                    className="w-3 h-3 rounded flex-shrink-0"
+                    style={{ backgroundColor: pkg.color }}
+                  />
+                  <span className="text-gray-500 flex-shrink-0 w-6">
+                    {index + 1}.
+                  </span>
+                  <span className="text-gray-300 truncate flex-1" title={pkg.name}>
+                    {pkg.name}
+                  </span>
+                  <span className="text-gray-500 flex-shrink-0 text-right w-14">
+                    {pkg.weight} {t('kg')}
+                  </span>
+                  <span className="text-blue-400 flex-shrink-0 font-mono text-right w-14">
+                    {pkg.cartonId}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
-      </div>
-
-      {/* Anleitung */}
-      <div className="p-3 bg-gray-700/50 rounded-lg">
-        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('controls')}</h2>
-        <ul className="text-xs text-gray-400 space-y-1">
-          <li>• {t('leftMouse')}</li>
-          <li>• {t('rightMouse')}</li>
-          <li>• {t('scroll')}</li>
-        </ul>
       </div>
     </div>
   )

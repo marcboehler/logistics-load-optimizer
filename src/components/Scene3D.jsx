@@ -3,12 +3,78 @@ import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
 
+// Container dimensions in mm
+const CONTAINER_SIZES = {
+  '20ft': { length: 5898, width: 2352 },
+  '40ft': { length: 12032, width: 2352 }
+}
+
+// Container footprint visualization
+function ContainerFootprint({ containerType, scale }) {
+  if (containerType === 'none' || !CONTAINER_SIZES[containerType]) {
+    return null
+  }
+
+  const { length, width } = CONTAINER_SIZES[containerType]
+  const scaledLength = length * scale
+  const scaledWidth = width * scale
+
+  // Position container so pallet is at one end
+  // Pallet is centered at origin, so container starts at pallet position
+  const offsetX = -6 // Pallet center X offset
+  const offsetZ = -4 // Pallet center Z offset
+
+  // Container corners (pallet at the front-left corner of container)
+  const x1 = offsetX - 6 // Start slightly before pallet
+  const z1 = offsetZ - 4
+  const x2 = x1 + scaledLength
+  const z2 = z1 + scaledWidth
+
+  const floorPoints = [
+    [x1, 0.01, z1],
+    [x2, 0.01, z1],
+    [x2, 0.01, z2],
+    [x1, 0.01, z2],
+    [x1, 0.01, z1]
+  ]
+
+  return (
+    <group>
+      {/* Container floor outline - dashed line */}
+      <Line
+        points={floorPoints}
+        color="#3b82f6"
+        lineWidth={3}
+        dashed
+        dashSize={0.5}
+        gapSize={0.25}
+      />
+
+      {/* Semi-transparent floor plane */}
+      <mesh
+        position={[(x1 + x2) / 2, 0.005, (z1 + z2) / 2]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[scaledLength, scaledWidth]} />
+        <meshBasicMaterial color="#3b82f6" transparent opacity={0.08} side={2} />
+      </mesh>
+
+      {/* Container dimension labels using corner markers */}
+      {[[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.02, z]}>
+          <sphereGeometry args={[0.15, 8, 8]} />
+          <meshBasicMaterial color="#3b82f6" />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 // Height limit indicator plane
 function HeightLimitIndicator({ maxHeightM, scale }) {
-  const palletHeight = 144 * scale // Pallet surface height
+  const palletHeight = 144 * scale
   const limitHeight = palletHeight + (maxHeightM * 1000 * scale)
 
-  // Create corner points for the limit plane outline
   const palletLength = 1200 * scale
   const palletWidth = 800 * scale
   const offsetX = -palletLength / 2
@@ -19,12 +85,11 @@ function HeightLimitIndicator({ maxHeightM, scale }) {
     [offsetX + palletLength, limitHeight, offsetZ],
     [offsetX + palletLength, limitHeight, offsetZ + palletWidth],
     [offsetX, limitHeight, offsetZ + palletWidth],
-    [offsetX, limitHeight, offsetZ], // Close the loop
+    [offsetX, limitHeight, offsetZ]
   ]
 
   return (
     <group>
-      {/* Dashed outline at height limit */}
       <Line
         points={points}
         color="#ef4444"
@@ -34,13 +99,11 @@ function HeightLimitIndicator({ maxHeightM, scale }) {
         gapSize={0.15}
       />
 
-      {/* Semi-transparent plane */}
       <mesh position={[0, limitHeight, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[palletLength, palletWidth]} />
         <meshBasicMaterial color="#ef4444" transparent opacity={0.1} side={2} />
       </mesh>
 
-      {/* Corner posts for visibility */}
       {[[offsetX, offsetZ], [offsetX + palletLength, offsetZ], [offsetX + palletLength, offsetZ + palletWidth], [offsetX, offsetZ + palletWidth]].map(([x, z], i) => (
         <Line
           key={i}
@@ -56,20 +119,24 @@ function HeightLimitIndicator({ maxHeightM, scale }) {
   )
 }
 
-function Scene3D({ packages, maxHeightLimit = 2.3 }) {
-  // Umrechnung mm zu Three.js Einheiten (1 Einheit = 100mm)
+function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
   const scale = 0.01
 
-  // Pallet center offset (pallet is 1200x800, so center is at 600x400)
-  const palletOffsetX = -6 // -600mm * scale
-  const palletOffsetZ = -4 // -400mm * scale
+  const palletOffsetX = -6
+  const palletOffsetZ = -4
+
+  // Camera target at center of stack height (Y = 1.15m for max 2.3m)
+  const cameraTargetY = 1.15
+
+  // Adjust camera position based on container size
+  const cameraDistance = containerType === '40ft' ? 35 : containerType === '20ft' ? 25 : 20
 
   return (
     <Canvas
-      camera={{ position: [20, 15, 20], fov: 50 }}
+      camera={{ position: [cameraDistance, 15, cameraDistance], fov: 50 }}
       className="w-full h-full"
     >
-      {/* Beleuchtung */}
+      {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight
         position={[15, 25, 15]}
@@ -81,30 +148,33 @@ function Scene3D({ packages, maxHeightLimit = 2.3 }) {
       <pointLight position={[-10, 15, -10]} intensity={0.3} />
       <hemisphereLight intensity={0.3} />
 
-      {/* Umgebung */}
+      {/* Environment */}
       <Environment preset="warehouse" />
 
-      {/* Boden-Grid */}
+      {/* Floor Grid */}
       <Grid
         position={[0, -0.01, 0]}
-        args={[40, 40]}
+        args={[60, 60]}
         cellSize={1}
         cellThickness={0.5}
         cellColor="#404040"
         sectionSize={5}
         sectionThickness={1}
         sectionColor="#606060"
-        fadeDistance={50}
+        fadeDistance={80}
         fadeStrength={1}
       />
 
-      {/* Europalette: 1200x800x144mm */}
+      {/* Container footprint */}
+      <ContainerFootprint containerType={containerType} scale={scale} />
+
+      {/* Euro Pallet: 1200x800x144mm */}
       <Pallet scale={scale} />
 
       {/* Height limit indicator */}
       <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
 
-      {/* Pakete auf der Palette mit berechneten Positionen */}
+      {/* Packages on pallet */}
       {packages.map((pkg) => (
         <StackedPackage
           key={pkg.id}
@@ -115,14 +185,14 @@ function Scene3D({ packages, maxHeightLimit = 2.3 }) {
         />
       ))}
 
-      {/* Kamera-Steuerung */}
+      {/* Camera Controls - target at center of stack height */}
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
         minDistance={5}
-        maxDistance={60}
-        target={[0, 4, 0]}
+        maxDistance={100}
+        target={[0, cameraTargetY, 0]}
       />
     </Canvas>
   )
