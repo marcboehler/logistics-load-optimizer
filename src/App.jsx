@@ -3,21 +3,29 @@ import Scene3D from './components/Scene3D'
 import InputPanel from './components/InputPanel'
 import Header from './components/Header'
 import { LanguageProvider } from './i18n/LanguageContext'
-import { fillPalletWithProducts, calculateTotalWeight } from './utils/palletStacking'
+import { fillPalletWithProducts, calculateTotalWeight, calculateMaxHeight } from './utils/palletStacking'
 
 function AppContent() {
   const [packages, setPackages] = useState([])
+  const [totalWeight, setTotalWeight] = useState(0)
+  const [totalHeight, setTotalHeight] = useState(0)
+
+  // Dynamic limits with defaults
+  const [maxHeight, setMaxHeight] = useState(2.30) // meters
+  const [maxWeight, setMaxWeight] = useState(700)  // kg
 
   const handleFillPallet = (quantity) => {
-    const placedPackages = fillPalletWithProducts(quantity)
-    setPackages(placedPackages)
+    const result = fillPalletWithProducts(quantity, maxHeight, maxWeight)
+    setPackages(result.packages)
+    setTotalWeight(result.totalWeight)
+    setTotalHeight(result.maxHeight)
   }
 
   const handleClearPallet = () => {
     setPackages([])
+    setTotalWeight(0)
+    setTotalHeight(0)
   }
-
-  const totalWeight = calculateTotalWeight(packages)
 
   return (
     <div className="flex flex-col h-screen w-screen bg-gray-900">
@@ -32,12 +40,17 @@ function AppContent() {
             onFillPallet={handleFillPallet}
             onClearPallet={handleClearPallet}
             totalWeight={totalWeight}
+            totalHeight={totalHeight}
+            maxHeight={maxHeight}
+            setMaxHeight={setMaxHeight}
+            maxWeight={maxWeight}
+            setMaxWeight={setMaxWeight}
           />
         </div>
 
         {/* Rechte Seite: 3D-Visualisierung */}
         <div className="flex-1">
-          <Scene3D packages={packages} />
+          <Scene3D packages={packages} maxHeightLimit={maxHeight} />
         </div>
       </div>
     </div>

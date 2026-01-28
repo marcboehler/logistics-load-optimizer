@@ -21,6 +21,12 @@ export const translations = {
     quantity: 'Anzahl Pakete',
     clearPallet: 'Palette leeren',
 
+    // Limits
+    limits: 'Limits',
+    maxHeight: 'Max. Stapelhöhe',
+    maxWeight: 'Max. Palettengewicht',
+    meter: 'm',
+
     // Controls
     controls: 'Steuerung',
     leftMouse: 'Linke Maustaste: Drehen',
@@ -30,7 +36,15 @@ export const translations = {
     // Stats
     totalWeight: 'Gesamtgewicht',
     totalPackages: 'Anzahl Pakete',
+    totalHeight: 'Stapelhöhe',
     palletUtilization: 'Auslastung',
+    weightUtilization: 'Gewichtsauslastung',
+    heightUtilization: 'Höhenauslastung',
+
+    // Legend
+    legend: 'Legende',
+    light: 'Leicht',
+    heavy: 'Schwer',
 
     // Units
     mm: 'mm',
@@ -58,6 +72,12 @@ export const translations = {
     quantity: 'Package Quantity',
     clearPallet: 'Clear Pallet',
 
+    // Limits
+    limits: 'Limits',
+    maxHeight: 'Max. Stack Height',
+    maxWeight: 'Max. Pallet Weight',
+    meter: 'm',
+
     // Controls
     controls: 'Controls',
     leftMouse: 'Left Mouse: Rotate',
@@ -67,7 +87,15 @@ export const translations = {
     // Stats
     totalWeight: 'Total Weight',
     totalPackages: 'Total Packages',
+    totalHeight: 'Stack Height',
     palletUtilization: 'Utilization',
+    weightUtilization: 'Weight Utilization',
+    heightUtilization: 'Height Utilization',
+
+    // Legend
+    legend: 'Legend',
+    light: 'Light',
+    heavy: 'Heavy',
 
     // Units
     mm: 'mm',
