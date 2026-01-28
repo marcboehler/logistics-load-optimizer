@@ -15,6 +15,9 @@ function AppContent() {
   const [maxHeight, setMaxHeight] = useState(2.30) // meters
   const [maxWeight, setMaxWeight] = useState(700)  // kg
 
+  // Container type: 'none', '20ft', '40ft'
+  const [containerType, setContainerType] = useState('none')
+
   const handleFillPallet = (quantity) => {
     const result = fillPalletWithProducts(quantity, maxHeight, maxWeight)
     setPackages(result.packages)
@@ -37,7 +40,7 @@ function AppContent() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Linke Seite: Eingabemaske */}
-        <div className="w-80 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700">
+        <div className="w-80 bg-gray-800 p-4 overflow-hidden border-r border-gray-700 flex flex-col">
           <InputPanel
             packages={packages}
             onFillPallet={handleFillPallet}
@@ -49,12 +52,18 @@ function AppContent() {
             setMaxHeight={setMaxHeight}
             maxWeight={maxWeight}
             setMaxWeight={setMaxWeight}
+            containerType={containerType}
+            setContainerType={setContainerType}
           />
         </div>
 
         {/* Rechte Seite: 3D-Visualisierung */}
         <div className="flex-1">
-          <Scene3D packages={packages} maxHeightLimit={maxHeight} />
+          <Scene3D
+            packages={packages}
+            maxHeightLimit={maxHeight}
+            containerType={containerType}
+          />
         </div>
       </div>
     </div>
