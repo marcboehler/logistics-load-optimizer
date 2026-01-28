@@ -1,9 +1,62 @@
 import { Canvas } from '@react-three/fiber'
-import { OrbitControls, Grid, Environment } from '@react-three/drei'
+import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
 
-function Scene3D({ packages }) {
+// Height limit indicator plane
+function HeightLimitIndicator({ maxHeightM, scale }) {
+  const palletHeight = 144 * scale // Pallet surface height
+  const limitHeight = palletHeight + (maxHeightM * 1000 * scale)
+
+  // Create corner points for the limit plane outline
+  const palletLength = 1200 * scale
+  const palletWidth = 800 * scale
+  const offsetX = -palletLength / 2
+  const offsetZ = -palletWidth / 2
+
+  const points = [
+    [offsetX, limitHeight, offsetZ],
+    [offsetX + palletLength, limitHeight, offsetZ],
+    [offsetX + palletLength, limitHeight, offsetZ + palletWidth],
+    [offsetX, limitHeight, offsetZ + palletWidth],
+    [offsetX, limitHeight, offsetZ], // Close the loop
+  ]
+
+  return (
+    <group>
+      {/* Dashed outline at height limit */}
+      <Line
+        points={points}
+        color="#ef4444"
+        lineWidth={2}
+        dashed
+        dashSize={0.3}
+        gapSize={0.15}
+      />
+
+      {/* Semi-transparent plane */}
+      <mesh position={[0, limitHeight, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[palletLength, palletWidth]} />
+        <meshBasicMaterial color="#ef4444" transparent opacity={0.1} side={2} />
+      </mesh>
+
+      {/* Corner posts for visibility */}
+      {[[offsetX, offsetZ], [offsetX + palletLength, offsetZ], [offsetX + palletLength, offsetZ + palletWidth], [offsetX, offsetZ + palletWidth]].map(([x, z], i) => (
+        <Line
+          key={i}
+          points={[[x, palletHeight, z], [x, limitHeight, z]]}
+          color="#ef4444"
+          lineWidth={1}
+          dashed
+          dashSize={0.2}
+          gapSize={0.1}
+        />
+      ))}
+    </group>
+  )
+}
+
+function Scene3D({ packages, maxHeightLimit = 2.3 }) {
   // Umrechnung mm zu Three.js Einheiten (1 Einheit = 100mm)
   const scale = 0.01
 
@@ -47,6 +100,9 @@ function Scene3D({ packages }) {
 
       {/* Europalette: 1200x800x144mm */}
       <Pallet scale={scale} />
+
+      {/* Height limit indicator */}
+      <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
 
       {/* Pakete auf der Palette mit berechneten Positionen */}
       {packages.map((pkg) => (
