@@ -3,12 +3,13 @@ import Scene3D from './components/Scene3D'
 import InputPanel from './components/InputPanel'
 import Header from './components/Header'
 import { LanguageProvider } from './i18n/LanguageContext'
-import { fillPalletWithProducts, calculateTotalWeight, calculateMaxHeight } from './utils/palletStacking'
+import { fillPalletWithProducts } from './utils/palletStacking'
 
 function AppContent() {
   const [packages, setPackages] = useState([])
   const [totalWeight, setTotalWeight] = useState(0)
   const [totalHeight, setTotalHeight] = useState(0)
+  const [volumeUtilization, setVolumeUtilization] = useState(0)
 
   // Dynamic limits with defaults
   const [maxHeight, setMaxHeight] = useState(2.30) // meters
@@ -19,12 +20,14 @@ function AppContent() {
     setPackages(result.packages)
     setTotalWeight(result.totalWeight)
     setTotalHeight(result.maxHeight)
+    setVolumeUtilization(result.volumeUtilization)
   }
 
   const handleClearPallet = () => {
     setPackages([])
     setTotalWeight(0)
     setTotalHeight(0)
+    setVolumeUtilization(0)
   }
 
   return (
@@ -41,6 +44,7 @@ function AppContent() {
             onClearPallet={handleClearPallet}
             totalWeight={totalWeight}
             totalHeight={totalHeight}
+            volumeUtilization={volumeUtilization}
             maxHeight={maxHeight}
             setMaxHeight={setMaxHeight}
             maxWeight={maxWeight}
