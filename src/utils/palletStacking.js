@@ -35,6 +35,41 @@ export const OVERFLOW_AREA = {
   floorHeight: 0
 }
 
+// Default configuration for "no container" mode (unlimited pallets in grid)
+const NO_CONTAINER_CONFIG = {
+  maxPallets: 200, // Allow up to 200 pallets when no container is selected
+  palletsPerRow: 4, // 4 pallets per row in grid layout
+  palletGap: 100 // 100mm gap between pallets
+}
+
+/**
+ * Calculate pallet positions in a grid layout (for no container mode)
+ * @param {number} palletCount - Number of pallets to position
+ * @returns {Array} Array of pallet positions {x, z, index}
+ */
+export const calculatePalletPositionsGrid = (palletCount) => {
+  const positions = []
+  const gap = NO_CONTAINER_CONFIG.palletGap
+  const palletsPerRow = NO_CONTAINER_CONFIG.palletsPerRow
+  const palletSpacingX = PALLET.length + gap
+  const palletSpacingZ = PALLET.width + gap
+
+  for (let i = 0; i < palletCount; i++) {
+    const row = Math.floor(i / palletsPerRow) // Which row (Z direction)
+    const col = i % palletsPerRow // Which column (X direction)
+
+    positions.push({
+      x: col * palletSpacingX,
+      z: row * palletSpacingZ,
+      index: i,
+      row,
+      column: col
+    })
+  }
+
+  return positions
+}
+
 /**
  * Calculate pallet positions within a container
  * Two rows side-by-side (longitudinal orientation), 50mm gaps
@@ -44,7 +79,7 @@ export const OVERFLOW_AREA = {
  */
 export const calculatePalletPositionsInContainer = (containerType, palletCount) => {
   const config = CONTAINER_CONFIG[containerType]
-  if (!config) return []
+  if (!config) return calculatePalletPositionsGrid(palletCount)
 
   const positions = []
   const effectivePalletCount = Math.min(palletCount, config.maxPallets)
@@ -616,7 +651,7 @@ const generateOverflowCandidatePositions = (placedBoxes) => {
 
 /**
  * Main function to fill pallet with random products using advanced packing
- * Now supports multi-pallet mode when containerType is specified
+ * Supports multi-pallet mode for both container and no-container scenarios
  */
 export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 700, containerType = 'none') => {
   const maxHeightMm = maxHeightM * 1000
@@ -627,46 +662,19 @@ export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 70
   // Sort by volume and weight (larger/heavier first)
   const sortedProducts = sortProductsForAdvancedPacking(randomProducts)
 
-  // If no container selected, use single pallet mode
-  if (containerType === 'none') {
-    const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
-    return {
-      ...result,
-      pallets: [{
-        index: 0,
-        packages: result.packages,
-        weight: result.totalWeight,
-        position: { x: 0, z: 0 }
-      }],
-      totalPallets: 1,
-      maxPallets: 1,
-      containerType: 'none',
-      containerUtilization: 100
-    }
-  }
-
-  // Multi-pallet mode for containers
+  // Always use multi-pallet mode
   return fillContainerWithPallets(sortedProducts, maxHeightMm, maxWeightKg, containerType)
 }
 
 /**
  * Fill a container with multiple pallets
  * Distributes packages across pallets until container capacity is reached
+ * Also handles "no container" mode with unlimited grid layout
  */
 const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, containerType) => {
   const config = CONTAINER_CONFIG[containerType]
-  if (!config) {
-    // Fallback to single pallet mode
-    const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
-    return {
-      ...result,
-      pallets: [{ index: 0, packages: result.packages, weight: result.totalWeight, position: { x: 0, z: 0 } }],
-      totalPallets: 1,
-      maxPallets: 1,
-      containerType,
-      containerUtilization: 100
-    }
-  }
+  const maxPalletsAllowed = config ? config.maxPallets : NO_CONTAINER_CONFIG.maxPallets
+  const isContainer = !!config
 
   const pallets = []
   let remainingProducts = [...sortedProducts]
@@ -675,7 +683,7 @@ const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, cont
   let totalWeight = 0
 
   // Fill pallets one by one until we run out of products or hit max pallets
-  while (remainingProducts.length > 0 && palletIndex < config.maxPallets) {
+  while (remainingProducts.length > 0 && palletIndex < maxPalletsAllowed) {
     // Calculate packing for this pallet
     const palletResult = calculateAdvancedPackagePositions(remainingProducts, maxHeightMm, maxWeightKg)
 
@@ -724,7 +732,7 @@ const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, cont
     : []
 
   // Calculate container utilization
-  const containerUtilization = (pallets.length / config.maxPallets) * 100
+  const containerUtilization = (pallets.length / maxPalletsAllowed) * 100
 
   // Calculate max height across all pallets
   const maxHeight = pallets.length > 0
@@ -738,7 +746,7 @@ const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, cont
     totalWeight,
     maxHeight,
     totalPallets: pallets.length,
-    maxPallets: config.maxPallets,
+    maxPallets: maxPalletsAllowed,
     containerType,
     containerUtilization,
     volumeUtilization: pallets.length > 0
