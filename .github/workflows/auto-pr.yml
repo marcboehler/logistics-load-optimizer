@@ -29,17 +29,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create and Merge PR
+      - name: Automate PR and Merge
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Create the PR (ignore error if it already exists)
-          gh pr create --base main --head ${{ github.ref_name }} --title "🚀 Automated Update" --body "Auto-PR" || echo "PR already exists"
+          # Create PR and capture the URL (or get existing PR URL)
+          PR_URL=$(gh pr create --base main --head ${{ github.ref_name }} --title "🚀 Automated Update" --body "Deployment" || gh pr list --head ${{ github.ref_name }} --json url --jq '.[0].url')
 
-          # 2. Wait a heartbeat
-          sleep 5
+          echo "Working on PR: $PR_URL"
 
-          # 3. Merge the PR for this specific branch immediately
-          # We use the branch name directly so we don't need a PR number
-          gh pr merge ${{ github.ref_name }} --merge --admin --delete-branch || echo "Merge failed, possibly already merged"
+          # Immediate Merge
+          gh pr merge $PR_URL --merge --admin --delete-branch
