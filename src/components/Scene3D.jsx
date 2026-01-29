@@ -376,7 +376,7 @@ function PositionedPallet({ scale, position, index, isSelected, opacity = 1.0 })
 }
 
 // Large overflow placeholder (performance optimization)
-function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }) {
+function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, opacity = 1.0 }) {
   const config = CONTAINER_CONFIG[containerType]
 
   // Calculate position (same as overflow area)
@@ -411,18 +411,22 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
     ? overflowCount.toLocaleString()
     : '0'
 
+  // Calculate effective opacity (base opacity * focus opacity)
+  const boxOpacity = 0.85 * opacity
+  const textOpacity = opacity
+
   return (
     <group>
       {/* Large red placeholder box - using meshBasicMaterial for reliability */}
       <mesh position={[centerX, centerY, centerZ]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshBasicMaterial color="#FF0000" transparent opacity={0.85} />
+        <meshBasicMaterial color="#FF0000" transparent opacity={boxOpacity} />
       </mesh>
 
       {/* Edge lines for visibility */}
       <lineSegments position={[centerX, centerY, centerZ]}>
         <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial color="#990000" />
+        <lineBasicMaterial color="#990000" transparent opacity={opacity} />
       </lineSegments>
 
       {/* Three-line text block - block-justified dark red design */}
@@ -434,6 +438,7 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         anchorX="center"
         anchorY="bottom"
         outlineWidth={0}
+        fillOpacity={textOpacity}
       >
         OVERFLOW:
       </Text>
@@ -447,6 +452,7 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         anchorY="bottom"
         fontWeight="bold"
         outlineWidth={0}
+        fillOpacity={textOpacity}
       >
         {displayCount}
       </Text>
@@ -460,6 +466,7 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         anchorY="bottom"
         letterSpacing={0.05}
         outlineWidth={0}
+        fillOpacity={textOpacity}
       >
         ITEMS
       </Text>
@@ -577,6 +584,7 @@ function Scene3D({
       )}
 
       {/* Overflow packages (red stack) - use placeholder for performance when count > threshold */}
+      {/* Opacity: 0.5 when a specific pallet is selected, 1.0 otherwise */}
       {hasOverflow && (
         useOverflowPlaceholder ? (
           <OverflowPlaceholder
@@ -584,10 +592,18 @@ function Scene3D({
             containerType={containerType}
             overflowCount={overflowPackages.length}
             maxHeightM={maxHeightLimit}
+            opacity={selectedPallet === null ? 1.0 : 0.5}
           />
         ) : (
           overflowPackages.map((pkg) => (
-            <StackedPackage key={`overflow-${pkg.id}`} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
+            <StackedPackage
+              key={`overflow-${pkg.id}`}
+              pkg={pkg}
+              scale={scale}
+              palletOffsetX={0}
+              palletOffsetZ={0}
+              opacity={selectedPallet === null ? 1.0 : 0.5}
+            />
           ))
         )
       )}
