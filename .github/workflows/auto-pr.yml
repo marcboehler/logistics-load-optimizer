@@ -1,9 +1,9 @@
-name: Auto PR Merge
+name: Auto PR Build and Merge
 
 on:
   pull_request:
     branches:
-      - '**'
+      - main
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -11,7 +11,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  auto-merge:
+  build-and-merge:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -29,9 +29,10 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Enable auto-merge
+      - name: Merge PR
         if: success()
-        run: gh pr merge --auto --merge "$PR_URL"
+        run: |
+          gh pr merge "$PR_NUMBER" --merge --admin
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
