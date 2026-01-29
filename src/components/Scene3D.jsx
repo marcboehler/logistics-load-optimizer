@@ -411,25 +411,37 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
     ? overflowCount.toLocaleString()
     : '0'
 
-  // Calculate effective opacity (base opacity * focus opacity)
-  const boxOpacity = 0.85 * opacity
-  const textOpacity = opacity
-
-  // Ghost mode: disable depth write for transparent items to prevent overdraw stacking
+  // Ghost mode: use flat unlit appearance for unfocused items
   const isGhost = opacity < 1.0
+  const ghostOpacity = 0.08 // Consistent with other ghost items
+
+  // Calculate effective opacity
+  const boxOpacity = isGhost ? ghostOpacity : 0.85
+  const textOpacity = isGhost ? ghostOpacity : 1.0
+  const ghostColor = '#a0a0a0' // Neutral grey for ghost mode
 
   return (
     <group>
-      {/* Large red placeholder box - using meshBasicMaterial for reliability */}
+      {/* Large placeholder box - meshBasicMaterial (already unlit) */}
       <mesh position={[centerX, centerY, centerZ]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshBasicMaterial color="#FF0000" transparent opacity={boxOpacity} depthWrite={!isGhost} />
+        <meshBasicMaterial
+          color={isGhost ? ghostColor : '#FF0000'}
+          transparent
+          opacity={boxOpacity}
+          depthWrite={false}
+        />
       </mesh>
 
       {/* Edge lines for visibility */}
       <lineSegments position={[centerX, centerY, centerZ]}>
         <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial color="#990000" transparent opacity={opacity} depthWrite={!isGhost} />
+        <lineBasicMaterial
+          color={isGhost ? '#808080' : '#990000'}
+          transparent
+          opacity={isGhost ? ghostOpacity : 1.0}
+          depthWrite={false}
+        />
       </lineSegments>
 
       {/* Three-line text block - block-justified dark red design */}
