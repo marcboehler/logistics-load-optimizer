@@ -422,8 +422,8 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
 
   return (
     <group>
-      {/* Large placeholder box - meshBasicMaterial (already unlit) */}
-      <mesh position={[centerX, centerY, centerZ]}>
+      {/* Large placeholder box - key forces re-render when switching materials */}
+      <mesh key={isGhost ? 'ghost' : 'solid'} position={[centerX, centerY, centerZ]}>
         <boxGeometry args={[width, height, depth]} />
         <meshBasicMaterial
           color={isGhost ? ghostColor : '#FF0000'}

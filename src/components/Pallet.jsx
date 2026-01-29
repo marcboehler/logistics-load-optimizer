@@ -21,8 +21,8 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
 
   return (
     <group position={[offsetX, palletHeight / 2, offsetZ]}>
-      {/* Haupt-Palette - conditional material based on focus state */}
-      <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
+      {/* Haupt-Palette - key forces re-render when switching materials */}
+      <mesh key={isGhost ? 'ghost' : 'solid'} castShadow={!isGhost} receiveShadow={!isGhost}>
         <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
         {isGhost ? (
           // Unlit flat material for background pallets (no shading noise)
