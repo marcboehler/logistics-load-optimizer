@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
 import Pallet from './Pallet'
@@ -125,8 +126,50 @@ function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
   const palletOffsetX = -6
   const palletOffsetZ = -4
 
-  // Camera target at center of stack height (Y = 1.15m for max 2.3m)
-  const cameraTargetY = 1.15
+  // Pallet dimensions for default target calculation
+  const palletLength = 1200 * scale
+  const palletWidth = 800 * scale
+  const palletHeight = 144 * scale
+
+  // Calculate dynamic camera target based on actual stack geometry
+  const cameraTarget = useMemo(() => {
+    if (packages.length === 0) {
+      // Default: center on pallet surface
+      return [0, palletHeight + 0.5, 0]
+    }
+
+    // Calculate bounding box of all packages
+    let minX = Infinity, maxX = -Infinity
+    let minY = Infinity, maxY = -Infinity
+    let minZ = Infinity, maxZ = -Infinity
+
+    for (const pkg of packages) {
+      const pos = pkg.position
+      const dim = pkg.dimensions
+
+      // Convert to scene coordinates (scaled and offset)
+      const pkgMinX = (pos.x - dim.length / 2) * scale + palletOffsetX
+      const pkgMaxX = (pos.x + dim.length / 2) * scale + palletOffsetX
+      const pkgMinY = pos.y * scale - (dim.height / 2) * scale
+      const pkgMaxY = pos.y * scale + (dim.height / 2) * scale
+      const pkgMinZ = (pos.z - dim.width / 2) * scale + palletOffsetZ
+      const pkgMaxZ = (pos.z + dim.width / 2) * scale + palletOffsetZ
+
+      minX = Math.min(minX, pkgMinX)
+      maxX = Math.max(maxX, pkgMaxX)
+      minY = Math.min(minY, pkgMinY)
+      maxY = Math.max(maxY, pkgMaxY)
+      minZ = Math.min(minZ, pkgMinZ)
+      maxZ = Math.max(maxZ, pkgMaxZ)
+    }
+
+    // Geometric center of all packages
+    const centerX = (minX + maxX) / 2
+    const centerY = (minY + maxY) / 2
+    const centerZ = (minZ + maxZ) / 2
+
+    return [centerX, centerY, centerZ]
+  }, [packages, scale, palletOffsetX, palletOffsetZ, palletHeight])
 
   // Adjust camera position based on container size
   const cameraDistance = containerType === '40ft' ? 35 : containerType === '20ft' ? 25 : 20
@@ -185,14 +228,14 @@ function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
         />
       ))}
 
-      {/* Camera Controls - target at center of stack height */}
+      {/* Camera Controls - dynamic target based on stack geometry */}
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
         minDistance={5}
         maxDistance={100}
-        target={[0, cameraTargetY, 0]}
+        target={cameraTarget}
       />
     </Canvas>
   )

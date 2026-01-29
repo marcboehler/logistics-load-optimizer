@@ -7,6 +7,7 @@ import { fillPalletWithProducts } from './utils/palletStacking'
 
 function AppContent() {
   const [packages, setPackages] = useState([])
+  const [overflowPackages, setOverflowPackages] = useState([])
   const [totalWeight, setTotalWeight] = useState(0)
   const [totalHeight, setTotalHeight] = useState(0)
   const [volumeUtilization, setVolumeUtilization] = useState(0)
@@ -21,6 +22,7 @@ function AppContent() {
   const handleFillPallet = (quantity) => {
     const result = fillPalletWithProducts(quantity, maxHeight, maxWeight)
     setPackages(result.packages)
+    setOverflowPackages(result.overflowPackages || [])
     setTotalWeight(result.totalWeight)
     setTotalHeight(result.maxHeight)
     setVolumeUtilization(result.volumeUtilization)
@@ -28,6 +30,7 @@ function AppContent() {
 
   const handleClearPallet = () => {
     setPackages([])
+    setOverflowPackages([])
     setTotalWeight(0)
     setTotalHeight(0)
     setVolumeUtilization(0)
@@ -43,6 +46,7 @@ function AppContent() {
         <div className="w-80 bg-gray-800 p-4 overflow-hidden border-r border-gray-700 flex flex-col">
           <InputPanel
             packages={packages}
+            overflowPackages={overflowPackages}
             onFillPallet={handleFillPallet}
             onClearPallet={handleClearPallet}
             totalWeight={totalWeight}

@@ -3,6 +3,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 
 function InputPanel({
   packages,
+  overflowPackages = [],
   onFillPallet,
   onClearPallet,
   totalWeight,
@@ -100,9 +101,8 @@ function InputPanel({
           <input
             type="number"
             value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
             min="1"
-            max="50"
             className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -189,7 +189,7 @@ function InputPanel({
           <div
             className="flex-1 h-4 rounded"
             style={{
-              background: 'linear-gradient(to right, rgb(255, 255, 224), rgb(255, 200, 100), rgb(255, 140, 50), rgb(200, 50, 0), rgb(139, 0, 0))'
+              background: 'linear-gradient(to right, rgb(224, 255, 240), rgb(144, 238, 144), rgb(60, 179, 113), rgb(34, 139, 34), rgb(0, 100, 0))'
             }}
           />
           <span className="text-xs text-gray-400">{t('heavy')}</span>
@@ -198,20 +198,25 @@ function InputPanel({
           <span>0 {t('kg')}</span>
           <span>20 {t('kg')}</span>
         </div>
+        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-600">
+          <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF0000' }} />
+          <span className="text-xs text-gray-400">{t('overflow')}</span>
+        </div>
       </div>
 
       {/* Package List - Scrollable */}
       <div className="flex-1 min-h-0 flex flex-col">
         <h2 className="text-sm font-semibold text-gray-300 mb-2">
-          {t('packageList')} ({packages.length})
+          {t('packageList')} ({packages.length}{overflowPackages.length > 0 ? ` + ${overflowPackages.length} ${t('overflow')}` : ''})
         </h2>
         <div className="flex-1 overflow-y-auto bg-gray-700/30 rounded-lg p-2">
-          {packages.length === 0 ? (
+          {packages.length === 0 && overflowPackages.length === 0 ? (
             <p className="text-xs text-gray-500 italic py-4 text-center">
               {t('noPackages')}
             </p>
           ) : (
             <div className="space-y-1">
+              {/* Placed packages */}
               {packages.map((pkg, index) => (
                 <div
                   key={pkg.id}
@@ -235,6 +240,37 @@ function InputPanel({
                   </span>
                 </div>
               ))}
+              {/* Overflow packages (not placed) */}
+              {overflowPackages.length > 0 && (
+                <>
+                  <div className="border-t border-red-500/30 my-2 pt-2">
+                    <span className="text-xs text-red-400 font-semibold">{t('overflow')}:</span>
+                  </div>
+                  {overflowPackages.map((pkg, index) => (
+                    <div
+                      key={`overflow-${pkg.id}`}
+                      className="p-2 bg-red-900/30 border border-red-500/30 rounded text-xs flex items-center gap-2"
+                    >
+                      <div
+                        className="w-3 h-3 rounded flex-shrink-0"
+                        style={{ backgroundColor: pkg.color }}
+                      />
+                      <span className="text-red-400 flex-shrink-0 w-6">
+                        {packages.length + index + 1}.
+                      </span>
+                      <span className="text-red-300 truncate flex-1" title={pkg.name}>
+                        {pkg.name}
+                      </span>
+                      <span className="text-red-400 flex-shrink-0 text-right w-14">
+                        {pkg.weight} {t('kg')}
+                      </span>
+                      <span className="text-red-400 flex-shrink-0 font-mono text-right w-14">
+                        {pkg.cartonId}
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
         </div>
