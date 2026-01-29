@@ -391,62 +391,64 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
     offsetX = (PALLET.length + 300) * scale
   }
 
-  // Placeholder dimensions
+  // Placeholder dimensions - ensure valid values
   const width = PALLET.length * scale
   const depth = PALLET.width * scale
-  const height = maxHeightM * 1.5 // 1.5x max stack height
+  const height = Math.max(maxHeightM * 1.5, 0.5) // 1.5x max stack height, minimum 0.5
 
   const centerX = offsetX + width / 2
   const centerY = height / 2
   const centerZ = offsetZ + depth / 2
 
   // Text positioning - three-line block above the box
-  const textBaseY = height + 0.3
-  const largeFontSize = 1.2 // Large number font
-  const smallFontSize = 0.35 // Small label font
-  const lineSpacing = 0.15
+  const textBaseY = height + 0.2
+  const largeFontSize = 0.8 // Large number font
+  const smallFontSize = 0.25 // Small label font
+
+  // Safety check for valid count
+  const displayCount = typeof overflowCount === 'number' && !isNaN(overflowCount)
+    ? overflowCount.toLocaleString()
+    : '0'
 
   return (
     <group>
-      {/* Large red placeholder box */}
+      {/* Large red placeholder box - using meshBasicMaterial for reliability */}
       <mesh position={[centerX, centerY, centerZ]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshStandardMaterial color="#FF0000" transparent opacity={0.8} />
+        <meshBasicMaterial color="#FF0000" transparent opacity={0.85} />
       </mesh>
 
       {/* Edge lines for visibility */}
       <lineSegments position={[centerX, centerY, centerZ]}>
         <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial color="#990000" linewidth={2} />
+        <lineBasicMaterial color="#990000" />
       </lineSegments>
 
-      {/* Three-line text block above the box */}
+      {/* Three-line text block above the box - NO custom font (uses default) */}
       {/* Line 1: "OVERFLOW:" label (top) */}
       <Text
-        position={[centerX, textBaseY + largeFontSize + smallFontSize + lineSpacing * 2, centerZ]}
+        position={[centerX, textBaseY + largeFontSize + smallFontSize + 0.2, centerZ]}
         fontSize={smallFontSize}
         color="#FFFFFF"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.02}
+        outlineWidth={0.015}
         outlineColor="#000000"
-        font="/fonts/Inter-Bold.woff"
       >
         OVERFLOW:
       </Text>
 
       {/* Line 2: The big number (middle) */}
       <Text
-        position={[centerX, textBaseY + smallFontSize + lineSpacing, centerZ]}
+        position={[centerX, textBaseY + smallFontSize + 0.1, centerZ]}
         fontSize={largeFontSize}
         color="#FFFF00"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.04}
+        outlineWidth={0.03}
         outlineColor="#000000"
-        font="/fonts/Inter-Bold.woff"
       >
-        {overflowCount.toLocaleString()}
+        {displayCount}
       </Text>
 
       {/* Line 3: "ITEMS" label (bottom) */}
@@ -456,9 +458,8 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         color="#FFFFFF"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.02}
+        outlineWidth={0.015}
         outlineColor="#000000"
-        font="/fonts/Inter-Bold.woff"
       >
         ITEMS
       </Text>

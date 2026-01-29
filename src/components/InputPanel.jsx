@@ -20,7 +20,8 @@ function InputPanel({
   maxPallets = 1,
   containerUtilization = 0,
   selectedPallet,
-  setSelectedPallet
+  setSelectedPallet,
+  isCalculating = false
 }) {
   const { t } = useLanguage()
   const [quantity, setQuantity] = useState(500)
@@ -137,13 +138,23 @@ function InputPanel({
         <div className="flex gap-2">
           <button
             onClick={handleFillPallet}
-            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md transition-colors"
+            disabled={isCalculating}
+            className={`flex-1 py-2 px-4 text-white font-medium rounded-md transition-colors ${
+              isCalculating
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-green-600 hover:bg-green-700'
+            }`}
           >
-            {t('fillPallet')}
+            {isCalculating ? t('calculating') || 'Berechne...' : t('fillPallet')}
           </button>
           <button
             onClick={onClearPallet}
-            className="py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors"
+            disabled={isCalculating}
+            className={`py-2 px-4 text-white font-medium rounded-md transition-colors ${
+              isCalculating
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
             {t('clearPallet')}
           </button>
