@@ -1,12 +1,5 @@
 import * as THREE from 'three'
 
-// Helper to desaturate a color for ghost mode
-function desaturateColor(color) {
-  // Convert to a pale grey with slight tint of original color
-  // This makes background items less visually distracting
-  return '#a0a0a0' // Neutral grey for all ghost items
-}
-
 function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.0 }) {
   // Position from stacking algorithm (in mm, needs to be converted)
   const posX = (pkg.position.x * scale) + palletOffsetX
@@ -14,59 +7,57 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
   const posZ = (pkg.position.z * scale) + palletOffsetZ
 
   // Dimensions from stacking algorithm
-  const boxWidth = pkg.dimensions.length * scale   // X-Achse
-  const boxHeight = pkg.dimensions.height * scale  // Y-Achse
-  const boxDepth = pkg.dimensions.width * scale    // Z-Achse
+  const boxWidth = pkg.dimensions.length * scale
+  const boxHeight = pkg.dimensions.height * scale
+  const boxDepth = pkg.dimensions.width * scale
 
-  // Ghost mode: use unlit flat material for unfocused items
-  const isGhost = opacity < 1.0
-  const ghostOpacity = 0.08 // Slightly visible flat shape
+  // Determine if this is a ghost (unfocused) item
+  const isFocused = opacity >= 1.0
 
-  return (
-    <group position={[posX, posY, posZ]}>
-      {/* Paket-Körper - key forces re-render when switching materials */}
-      <mesh key={isGhost ? 'ghost' : 'solid'} castShadow={!isGhost} receiveShadow={!isGhost}>
-        <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
-        {isGhost ? (
-          // Unlit flat material for background items (no shading noise)
-          <meshBasicMaterial
-            color={desaturateColor(pkg.color)}
-            transparent={true}
-            opacity={ghostOpacity}
-            depthWrite={false}
-          />
-        ) : (
-          // Full lit material for focused items
+  // NUCLEAR FIX: Completely separate rendering paths
+  if (isFocused) {
+    // === FOCUSED RENDERING: Full quality with lighting ===
+    return (
+      <group position={[posX, posY, posZ]}>
+        <mesh key="focused-pkg" castShadow receiveShadow>
+          <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
           <meshStandardMaterial
             color={pkg.color}
             roughness={0.7}
             metalness={0.1}
-            transparent={true}
-            opacity={opacity}
           />
-        )}
-      </mesh>
-
-      {/* Kanten für bessere Sichtbarkeit */}
-      <lineSegments>
-        <edgesGeometry args={[new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth)]} />
-        <lineBasicMaterial
-          color={isGhost ? '#808080' : '#000000'}
-          transparent={true}
-          opacity={isGhost ? ghostOpacity : 0.4}
-          depthWrite={false}
-        />
-      </lineSegments>
-
-      {/* Optional: Gewichtsanzeige als kleine Markierung oben (only when focused) */}
-      {pkg.weight >= 10 && !isGhost && (
-        <mesh position={[0, boxHeight / 2 + 0.05, 0]}>
-          <sphereGeometry args={[0.1, 8, 8]} />
-          <meshStandardMaterial color="#ffffff" />
         </mesh>
-      )}
-    </group>
-  )
+        {/* High-quality edges for focused items */}
+        <lineSegments>
+          <edgesGeometry args={[new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth)]} />
+          <lineBasicMaterial color="#000000" opacity={0.4} transparent />
+        </lineSegments>
+        {/* Weight indicator for heavy items */}
+        {pkg.weight >= 10 && (
+          <mesh position={[0, boxHeight / 2 + 0.05, 0]}>
+            <sphereGeometry args={[0.1, 8, 8]} />
+            <meshStandardMaterial color="#ffffff" />
+          </mesh>
+        )}
+      </group>
+    )
+  } else {
+    // === GHOST RENDERING: Flat unlit, no edges, minimal ===
+    return (
+      <group position={[posX, posY, posZ]}>
+        <mesh key="ghost-pkg">
+          <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
+          <meshBasicMaterial
+            color="#808080"
+            transparent={true}
+            opacity={0.05}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* NO edges for ghost items - keeps it clean */}
+      </group>
+    )
+  }
 }
 
 export default StackedPackage
