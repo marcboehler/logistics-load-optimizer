@@ -123,7 +123,38 @@ function InputPanel({
         </div>
       </div>
 
-      {/* Stats */}
+      {/* Stats Badges */}
+      <div className="mb-4 space-y-2">
+        {/* Pallet Badge */}
+        <div className="p-3 bg-green-900/30 rounded-lg border border-green-700/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-green-500" />
+              <span className="text-sm font-semibold text-green-400">{t('pallet')}</span>
+            </div>
+            <span className="text-sm text-green-300">
+              {totalWeight.toFixed(1)} {t('kg')} | {packages.length} {t('totalPackages')}
+            </span>
+          </div>
+        </div>
+
+        {/* Overflow Badge - only show when there are overflow packages */}
+        {overflowPackages.length > 0 && (
+          <div className="p-3 bg-red-900/30 rounded-lg border border-red-700/50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded bg-red-500" />
+                <span className="text-sm font-semibold text-red-400">{t('overflow')}</span>
+              </div>
+              <span className="text-sm text-red-300">
+                {overflowPackages.length} {t('totalPackages')} (Red)
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Detailed Stats */}
       <div className="mb-4 p-3 bg-blue-900/30 rounded-lg border border-blue-800/50">
         <div className="grid grid-cols-3 gap-2 text-center mb-3">
           <div>

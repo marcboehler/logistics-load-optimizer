@@ -3,11 +3,69 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
+import { OVERFLOW_AREA } from '../utils/palletStacking'
 
 // Container dimensions in mm
 const CONTAINER_SIZES = {
   '20ft': { length: 5898, width: 2352 },
   '40ft': { length: 12032, width: 2352 }
+}
+
+// Overflow area visual indicator
+function OverflowAreaIndicator({ scale, hasOverflow }) {
+  if (!hasOverflow) return null
+
+  const offsetX = OVERFLOW_AREA.offsetX * scale
+  const length = OVERFLOW_AREA.length * scale
+  const width = OVERFLOW_AREA.width * scale
+
+  // Position relative to pallet offset
+  const palletOffsetX = -6
+  const palletOffsetZ = -4
+
+  const x1 = palletOffsetX + offsetX
+  const z1 = palletOffsetZ
+  const x2 = x1 + length
+  const z2 = z1 + width
+
+  const floorPoints = [
+    [x1, 0.01, z1],
+    [x2, 0.01, z1],
+    [x2, 0.01, z2],
+    [x1, 0.01, z2],
+    [x1, 0.01, z1]
+  ]
+
+  return (
+    <group>
+      {/* Overflow area floor outline - red dashed line */}
+      <Line
+        points={floorPoints}
+        color="#ef4444"
+        lineWidth={3}
+        dashed
+        dashSize={0.3}
+        gapSize={0.15}
+      />
+
+      {/* Semi-transparent red floor plane */}
+      <mesh
+        position={[(x1 + x2) / 2, 0.005, (z1 + z2) / 2]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[length, width]} />
+        <meshBasicMaterial color="#ef4444" transparent opacity={0.15} side={2} />
+      </mesh>
+
+      {/* Corner markers */}
+      {[[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.02, z]}>
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#ef4444" />
+        </mesh>
+      ))}
+    </group>
+  )
 }
 
 // Container footprint visualization
@@ -120,7 +178,7 @@ function HeightLimitIndicator({ maxHeightM, scale }) {
   )
 }
 
-function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
+function Scene3D({ packages, overflowPackages = [], maxHeightLimit = 2.3, containerType = 'none' }) {
   const scale = 0.01
 
   const palletOffsetX = -6
@@ -131,23 +189,26 @@ function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
   const palletWidth = 800 * scale
   const palletHeight = 144 * scale
 
-  // Calculate dynamic camera target based on actual stack geometry
+  // Calculate dynamic camera target based on actual stack geometry (including overflow)
   const cameraTarget = useMemo(() => {
-    if (packages.length === 0) {
+    const allPackages = [...packages, ...overflowPackages]
+
+    if (allPackages.length === 0) {
       // Default: center on pallet surface
       return [0, palletHeight + 0.5, 0]
     }
 
-    // Calculate bounding box of all packages
+    // Calculate bounding box of all packages (pallet + overflow)
     let minX = Infinity, maxX = -Infinity
     let minY = Infinity, maxY = -Infinity
     let minZ = Infinity, maxZ = -Infinity
 
-    for (const pkg of packages) {
+    for (const pkg of allPackages) {
       const pos = pkg.position
       const dim = pkg.dimensions
 
       // Convert to scene coordinates (scaled and offset)
+      // Note: overflow packages already have offsetX included in their position
       const pkgMinX = (pos.x - dim.length / 2) * scale + palletOffsetX
       const pkgMaxX = (pos.x + dim.length / 2) * scale + palletOffsetX
       const pkgMinY = pos.y * scale - (dim.height / 2) * scale
@@ -169,10 +230,12 @@ function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
     const centerZ = (minZ + maxZ) / 2
 
     return [centerX, centerY, centerZ]
-  }, [packages, scale, palletOffsetX, palletOffsetZ, palletHeight])
+  }, [packages, overflowPackages, scale, palletOffsetX, palletOffsetZ, palletHeight])
 
-  // Adjust camera position based on container size
-  const cameraDistance = containerType === '40ft' ? 35 : containerType === '20ft' ? 25 : 20
+  // Adjust camera position based on container size and overflow
+  const hasOverflow = overflowPackages.length > 0
+  const baseDistance = containerType === '40ft' ? 35 : containerType === '20ft' ? 25 : 20
+  const cameraDistance = hasOverflow ? baseDistance + 10 : baseDistance
 
   return (
     <Canvas
@@ -217,10 +280,24 @@ function Scene3D({ packages, maxHeightLimit = 2.3, containerType = 'none' }) {
       {/* Height limit indicator */}
       <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
 
-      {/* Packages on pallet */}
+      {/* Overflow area indicator (red zone) */}
+      <OverflowAreaIndicator scale={scale} hasOverflow={hasOverflow} />
+
+      {/* Packages on pallet (green heatmap) */}
       {packages.map((pkg) => (
         <StackedPackage
           key={pkg.id}
+          pkg={pkg}
+          scale={scale}
+          palletOffsetX={palletOffsetX}
+          palletOffsetZ={palletOffsetZ}
+        />
+      ))}
+
+      {/* Overflow packages (red stack) */}
+      {overflowPackages.map((pkg) => (
+        <StackedPackage
+          key={`overflow-${pkg.id}`}
           pkg={pkg}
           scale={scale}
           palletOffsetX={palletOffsetX}
