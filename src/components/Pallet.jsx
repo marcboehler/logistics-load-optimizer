@@ -1,7 +1,6 @@
-import { useMemo } from 'react'
 import * as THREE from 'three'
 
-function Pallet({ scale = 0.01 }) {
+function Pallet({ scale = 0.01, opacity = 1.0 }) {
   // Europalette Maße in mm: 1200 x 800 x 144
   const palletWidth = 1200 * scale   // X-Achse (length)
   const palletDepth = 800 * scale    // Z-Achse (width)
@@ -15,12 +14,19 @@ function Pallet({ scale = 0.01 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
+  const isTransparent = opacity < 1.0
+
   return (
     <group position={[offsetX, palletHeight / 2, offsetZ]}>
       {/* Haupt-Palette als vereinfachter Würfel */}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
-        <meshStandardMaterial color={palletColor} roughness={0.8} />
+        <meshStandardMaterial
+          color={palletColor}
+          roughness={0.8}
+          transparent={isTransparent}
+          opacity={opacity}
+        />
       </mesh>
 
       {/* Kanten-Markierung für bessere Sichtbarkeit */}

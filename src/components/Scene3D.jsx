@@ -360,16 +360,16 @@ function HeightLimitIndicator({ maxHeightM, scale, palletPosition = { x: 0, z: 0
 }
 
 // Pallet with position offset
-function PositionedPallet({ scale, position, index, isSelected }) {
+function PositionedPallet({ scale, position, index, isSelected, opacity = 1.0 }) {
   const x = position.x * scale
   const z = position.z * scale
 
   return (
     <group position={[x, 0, z]}>
-      <Pallet scale={scale} />
+      <Pallet scale={scale} opacity={opacity} />
       <mesh position={[PALLET.length * scale / 2, 0.02, PALLET.width * scale / 2]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.3, 16]} />
-        <meshBasicMaterial color={isSelected ? '#22c55e' : '#6b7280'} transparent opacity={0.8} />
+        <meshBasicMaterial color={isSelected ? '#22c55e' : '#6b7280'} transparent opacity={0.8 * opacity} />
       </mesh>
     </group>
   )
@@ -529,15 +529,36 @@ function Scene3D({
       {/* Render pallets and packages */}
       {pallets.length > 0 ? (
         <>
-          {pallets.map((pallet) => (
-            <group key={`pallet-group-${pallet.index}`}>
-              <PositionedPallet scale={scale} position={pallet.position} index={pallet.index} isSelected={selectedPallet === pallet.index} />
-              <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} palletPosition={pallet.position} />
-            </group>
-          ))}
-          {packages.map((pkg) => (
-            <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
-          ))}
+          {pallets.map((pallet) => {
+            // Opacity: 100% if no selection or this pallet is selected, 50% otherwise
+            const palletOpacity = selectedPallet === null || selectedPallet === pallet.index ? 1.0 : 0.5
+            return (
+              <group key={`pallet-group-${pallet.index}`}>
+                <PositionedPallet
+                  scale={scale}
+                  position={pallet.position}
+                  index={pallet.index}
+                  isSelected={selectedPallet === pallet.index}
+                  opacity={palletOpacity}
+                />
+                <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} palletPosition={pallet.position} />
+              </group>
+            )
+          })}
+          {packages.map((pkg) => {
+            // Opacity based on whether this package's pallet is selected
+            const pkgOpacity = selectedPallet === null || pkg.palletIndex === selectedPallet ? 1.0 : 0.5
+            return (
+              <StackedPackage
+                key={pkg.id}
+                pkg={pkg}
+                scale={scale}
+                palletOffsetX={0}
+                palletOffsetZ={0}
+                opacity={pkgOpacity}
+              />
+            )
+          })}
           {containerType !== 'none' ? (
             <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
           ) : (

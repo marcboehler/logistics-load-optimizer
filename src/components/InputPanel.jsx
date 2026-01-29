@@ -225,14 +225,15 @@ function InputPanel({
         {/* Overflow Badge - only show when there are overflow packages */}
         {overflowPackages.length > 0 && (
           <div className="p-3 bg-red-900/30 rounded-lg border border-red-700/50">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-500" />
+                <div className="w-3 h-3 rounded bg-red-500 mt-0.5" />
                 <span className="text-sm font-semibold text-red-400">{t('overflow')}</span>
               </div>
-              <span className="text-sm text-red-300">
-                {overflowPackages.length} {t('totalPackages')} (Red)
-              </span>
+              <div className="text-right text-sm text-red-300 leading-relaxed">
+                <div>{overflowPackages.reduce((sum, pkg) => sum + pkg.weight, 0).toFixed(1)} {t('kg')}</div>
+                <div>{overflowPackages.length} {t('totalPackages')}</div>
+              </div>
             </div>
           </div>
         )}

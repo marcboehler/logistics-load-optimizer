@@ -5,9 +5,14 @@ function Header() {
 
   return (
     <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 flex justify-between items-center">
-      <h1 className="text-xl font-bold text-blue-400">
-        {t('appTitle')}
-      </h1>
+      <div className="flex items-baseline">
+        <h1 className="text-xl font-bold text-blue-400">
+          {t('appTitle')}
+        </h1>
+        <span className="text-sm font-extralight text-gray-400 opacity-60 ml-2">
+          by Marc Böhler
+        </span>
+      </div>
 
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-400">{t('language')}:</span>

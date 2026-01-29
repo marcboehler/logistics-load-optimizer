@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ }) {
+function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.0 }) {
   // Position from stacking algorithm (in mm, needs to be converted)
   const posX = (pkg.position.x * scale) + palletOffsetX
   const posY = pkg.position.y * scale
@@ -11,6 +11,8 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ }) {
   const boxHeight = pkg.dimensions.height * scale  // Y-Achse
   const boxDepth = pkg.dimensions.width * scale    // Z-Achse
 
+  const isTransparent = opacity < 1.0
+
   return (
     <group position={[posX, posY, posZ]}>
       {/* Paket-Körper */}
@@ -20,6 +22,8 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ }) {
           color={pkg.color}
           roughness={0.7}
           metalness={0.1}
+          transparent={isTransparent}
+          opacity={opacity}
         />
       </mesh>
 
