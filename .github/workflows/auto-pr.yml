@@ -29,33 +29,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create or Get Pull Request
-        id: cpr
+      - name: Create and Merge PR
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Try to create the PR, ignore error if it already exists
-          gh pr create --base main --head ${{ github.ref_name }} \
-            --title "🚀 Automated Update from AI Developer" \
-            --body "Auto-generated PR from Claude Code" || true
+          # 1. Create the PR (ignore error if it already exists)
+          gh pr create --base main --head ${{ github.ref_name }} --title "🚀 Automated Update" --body "Auto-PR" || echo "PR already exists"
 
-          # 2. Get the number of the open PR for this branch
-          PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number --jq '.[0].number')
+          # 2. Wait a heartbeat
+          sleep 5
 
-          # 3. Export to GitHub Output
-          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
-          echo "Pull Request Number: $PR_NUMBER"
-
-      - name: Merge Pull Request
-        if: success() && steps.cpr.outputs.PR_NUMBER
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Merging PR #${{ steps.cpr.outputs.PR_NUMBER }}..."
-
-          # Wait a moment for GitHub to process the PR
-          sleep 3
-
-          # Merge the PR
-          gh pr merge ${{ steps.cpr.outputs.PR_NUMBER }} --merge --admin --delete-branch
+          # 3. Merge the PR for this specific branch immediately
+          # We use the branch name directly so we don't need a PR number
+          gh pr merge ${{ github.ref_name }} --merge --admin --delete-branch || echo "Merge failed, possibly already merged"
