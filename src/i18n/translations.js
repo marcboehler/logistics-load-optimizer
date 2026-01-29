@@ -61,6 +61,10 @@ export const translations = {
     heavy: 'Schwer',
     overflow: 'Nicht platziert (Overflow)',
 
+    // Loading
+    calculating: 'Berechne...',
+    pleaseWait: 'Bitte warten...',
+
     // Units
     mm: 'mm',
     kg: 'kg',
@@ -126,6 +130,10 @@ export const translations = {
     light: 'Light',
     heavy: 'Heavy',
     overflow: 'Not placed (Overflow)',
+
+    // Loading
+    calculating: 'Calculating...',
+    pleaseWait: 'Please wait...',
 
     // Units
     mm: 'mm',

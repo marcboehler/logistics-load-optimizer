@@ -2,8 +2,26 @@ import { useState } from 'react'
 import Scene3D from './components/Scene3D'
 import InputPanel from './components/InputPanel'
 import Header from './components/Header'
-import { LanguageProvider } from './i18n/LanguageContext'
+import { LanguageProvider, useLanguage } from './i18n/LanguageContext'
 import { fillPalletWithProducts } from './utils/palletStacking'
+
+// Loading overlay component
+function LoadingOverlay({ isVisible }) {
+  const { t } = useLanguage()
+
+  if (!isVisible) return null
+
+  return (
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="text-center">
+        {/* Spinner */}
+        <div className="inline-block w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-xl font-bold text-white">{t('calculating') || 'BERECHNE BELADEPLAN...'}</p>
+        <p className="text-sm text-gray-400 mt-2">{t('pleaseWait') || 'Bitte warten...'}</p>
+      </div>
+    </div>
+  )
+}
 
 function AppContent() {
   const [packages, setPackages] = useState([])
@@ -12,6 +30,7 @@ function AppContent() {
   const [totalWeight, setTotalWeight] = useState(0)
   const [totalHeight, setTotalHeight] = useState(0)
   const [volumeUtilization, setVolumeUtilization] = useState(0)
+  const [isCalculating, setIsCalculating] = useState(false)
 
   // Multi-pallet state
   const [totalPallets, setTotalPallets] = useState(0)
@@ -27,17 +46,29 @@ function AppContent() {
   const [containerType, setContainerType] = useState('none')
 
   const handleFillPallet = (quantity) => {
-    const result = fillPalletWithProducts(quantity, maxHeight, maxWeight, containerType)
-    setPackages(result.packages)
-    setOverflowPackages(result.overflowPackages || [])
-    setPallets(result.pallets || [])
-    setTotalWeight(result.totalWeight)
-    setTotalHeight(result.maxHeight)
-    setVolumeUtilization(result.volumeUtilization)
-    setTotalPallets(result.totalPallets || 1)
-    setMaxPallets(result.maxPallets || 1)
-    setContainerUtilization(result.containerUtilization || 100)
-    setSelectedPallet(null) // Reset to show all pallets
+    // Show loading overlay immediately
+    setIsCalculating(true)
+
+    // Use setTimeout to allow UI to render loading state before heavy calculation
+    setTimeout(() => {
+      try {
+        const result = fillPalletWithProducts(quantity, maxHeight, maxWeight, containerType)
+        setPackages(result.packages)
+        setOverflowPackages(result.overflowPackages || [])
+        setPallets(result.pallets || [])
+        setTotalWeight(result.totalWeight)
+        setTotalHeight(result.maxHeight)
+        setVolumeUtilization(result.volumeUtilization)
+        setTotalPallets(result.totalPallets || 1)
+        setMaxPallets(result.maxPallets || 1)
+        setContainerUtilization(result.containerUtilization || 100)
+        setSelectedPallet(null) // Reset to show all pallets
+      } catch (error) {
+        console.error('Error calculating pallet:', error)
+      } finally {
+        setIsCalculating(false)
+      }
+    }, 50) // Small delay to allow UI to update
   }
 
   const handleClearPallet = () => {
@@ -58,7 +89,10 @@ function AppContent() {
       {/* Header mit Language Switcher */}
       <Header />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Loading Overlay */}
+        <LoadingOverlay isVisible={isCalculating} />
+
         {/* Linke Seite: Eingabemaske */}
         <div className="w-80 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700 flex flex-col">
           <InputPanel
@@ -81,6 +115,7 @@ function AppContent() {
             containerUtilization={containerUtilization}
             selectedPallet={selectedPallet}
             setSelectedPallet={setSelectedPallet}
+            isCalculating={isCalculating}
           />
         </div>
 
