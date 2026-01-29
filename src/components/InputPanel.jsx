@@ -1,4 +1,5 @@
 import { useLanguage } from '../i18n/LanguageContext'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 function InputPanel({
   packages,
@@ -181,20 +182,22 @@ function InputPanel({
             <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-2">
               <button
                 onClick={handlePrevPallet}
-                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                aria-label={t('prev')}
               >
-                &lt; {t('prev')}
+                <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm font-medium text-gray-300">
+              <span className="text-sm font-medium text-gray-300 flex-1 text-center">
                 {selectedPallet === null
                   ? t('allPallets')
                   : `${t('pallet')} ${selectedPallet + 1}`}
               </span>
               <button
                 onClick={handleNextPallet}
-                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+                className="p-2 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                aria-label={t('next')}
               >
-                {t('next')} &gt;
+                <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           )}
@@ -205,16 +208,17 @@ function InputPanel({
       <div className="mb-4 space-y-2">
         {/* Pallet Badge */}
         <div className="p-3 bg-green-900/30 rounded-lg border border-green-700/50">
-          <div className="flex items-center justify-between">
+          <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-green-500" />
+              <div className="w-3 h-3 rounded bg-green-500 mt-0.5" />
               <span className="text-sm font-semibold text-green-400">
                 {isMultiPallet ? t('totalShipment') : t('pallet')}
               </span>
             </div>
-            <span className="text-sm text-green-300">
-              {totalWeight.toFixed(1)} {t('kg')} | {packages.length} {t('totalPackages')}
-            </span>
+            <div className="text-right text-sm text-green-300 leading-relaxed">
+              <div>{totalWeight.toFixed(1)} {t('kg')}</div>
+              <div>{packages.length} {t('totalPackages')}</div>
+            </div>
           </div>
         </div>
 
