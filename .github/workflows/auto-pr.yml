@@ -1,21 +1,21 @@
-name: Auto PR Build and Merge
+name: Auto PR and Merge
 
 on:
-  pull_request:
-    branches:
+  push:
+    branches-ignore:
       - main
-    types: [opened, synchronize, reopened]
-
-permissions:
-  contents: write
-  pull-requests: write
 
 jobs:
-  build-and-merge:
+  automerge:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,10 +29,26 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Merge PR
+      - name: Create Pull Request
+        id: cpr
         if: success()
-        run: |
-          gh pr merge "$PR_NUMBER" --merge --admin
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          title: "🚀 Automated Update from AI Developer"
+          body: |
+            ## Auto-generated PR from Claude Code
+
+            This PR was automatically created after a successful build.
+
+            **Branch:** ${{ github.ref_name }}
+            **Commit:** ${{ github.sha }}
+          delete-branch: true
+
+      - name: Merge Pull Request
+        if: steps.cpr.outputs.pull-request-number
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --merge --admin --delete-branch
