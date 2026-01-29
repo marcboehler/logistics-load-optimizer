@@ -30,44 +30,32 @@ jobs:
         run: npm run build
 
       - name: Create or Get Pull Request
-        id: pr
+        id: cpr
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Try to create a new PR, or get existing PR number
-          PR_URL=$(gh pr create \
-            --base main \
-            --head ${{ github.ref_name }} \
+          # 1. Try to create the PR, ignore error if it already exists
+          gh pr create --base main --head ${{ github.ref_name }} \
             --title "🚀 Automated Update from AI Developer" \
-            --body "## Auto-generated PR from Claude Code
+            --body "Auto-generated PR from Claude Code" || true
 
-          This PR was automatically created after a successful build.
+          # 2. Get the number of the open PR for this branch
+          PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number --jq '.[0].number')
 
-          **Branch:** ${{ github.ref_name }}
-          **Commit:** ${{ github.sha }}" 2>&1) || true
-
-          # Check if PR already exists
-          if echo "$PR_URL" | grep -q "already exists"; then
-            echo "PR already exists, fetching PR number..."
-            PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number --jq '.[0].number')
-          else
-            # Extract PR number from URL
-            PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
-          fi
-
+          # 3. Export to GitHub Output
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "Pull Request Number: $PR_NUMBER"
 
       - name: Merge Pull Request
-        if: success() && steps.pr.outputs.PR_NUMBER
+        if: success() && steps.cpr.outputs.PR_NUMBER
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Merging PR #${{ steps.pr.outputs.PR_NUMBER }}..."
+          echo "Merging PR #${{ steps.cpr.outputs.PR_NUMBER }}..."
 
           # Wait a moment for GitHub to process the PR
           sleep 3
 
           # Merge the PR
-          gh pr merge ${{ steps.pr.outputs.PR_NUMBER }} --merge --admin --delete-branch
+          gh pr merge ${{ steps.cpr.outputs.PR_NUMBER }} --merge --admin --delete-branch
