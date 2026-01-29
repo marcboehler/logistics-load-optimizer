@@ -23,7 +23,7 @@ function InputPanel({
   setSelectedPallet
 }) {
   const { t } = useLanguage()
-  const [quantity, setQuantity] = useState(2500)
+  const [quantity, setQuantity] = useState(500)
 
   const handleFillPallet = () => {
     onFillPallet(quantity)

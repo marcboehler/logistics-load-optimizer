@@ -17,8 +17,9 @@ const CONTAINER_SIZES = {
 
 /**
  * Calculate scene bounding box from all packages and pallets
+ * When overflow exceeds threshold, uses placeholder height instead of all overflow items
  */
-const calculateSceneBounds = (packages, overflowPackages, pallets, containerType, scale) => {
+const calculateSceneBounds = (packages, overflowPackages, pallets, containerType, scale, maxHeightLimit = 2.3) => {
   let minX = 0, maxX = PALLET.length * scale
   let minY = 0, maxY = (PALLET.height + 500) * scale
   let minZ = 0, maxZ = PALLET.width * scale
@@ -30,9 +31,8 @@ const calculateSceneBounds = (packages, overflowPackages, pallets, containerType
     maxZ = Math.max(maxZ, container.width * scale)
   }
 
-  // Include all packages
-  const allPackages = [...packages, ...overflowPackages]
-  for (const pkg of allPackages) {
+  // Include pallet packages (always rendered individually)
+  for (const pkg of packages) {
     if (!pkg.position || !pkg.dimensions) continue
 
     const halfL = (pkg.dimensions.length / 2) * scale
@@ -49,6 +49,52 @@ const calculateSceneBounds = (packages, overflowPackages, pallets, containerType
     maxY = Math.max(maxY, posY + halfH)
     minZ = Math.min(minZ, posZ - halfW)
     maxZ = Math.max(maxZ, posZ + halfW)
+  }
+
+  // Handle overflow bounds based on whether we use placeholder or individual items
+  if (overflowPackages.length > 0) {
+    const useOverflowPlaceholder = overflowPackages.length > MAX_VISIBLE_OVERFLOW
+    const config = CONTAINER_CONFIG[containerType]
+
+    // Calculate overflow area position
+    let overflowOffsetX = 0
+    let overflowOffsetZ = 0
+    if (config) {
+      overflowOffsetZ = (config.width + 500) * scale
+    } else {
+      overflowOffsetX = (PALLET.length + 300) * scale
+    }
+
+    if (useOverflowPlaceholder) {
+      // Use placeholder dimensions for bounds calculation
+      const placeholderWidth = PALLET.length * scale
+      const placeholderDepth = PALLET.width * scale
+      const placeholderHeight = maxHeightLimit * 1.5 // Same as OverflowPlaceholder
+
+      maxX = Math.max(maxX, overflowOffsetX + placeholderWidth)
+      maxY = Math.max(maxY, placeholderHeight)
+      maxZ = Math.max(maxZ, overflowOffsetZ + placeholderDepth)
+    } else {
+      // Include individual overflow packages
+      for (const pkg of overflowPackages) {
+        if (!pkg.position || !pkg.dimensions) continue
+
+        const halfL = (pkg.dimensions.length / 2) * scale
+        const halfH = (pkg.dimensions.height / 2) * scale
+        const halfW = (pkg.dimensions.width / 2) * scale
+
+        const posX = pkg.position.x * scale
+        const posY = pkg.position.y * scale
+        const posZ = pkg.position.z * scale
+
+        minX = Math.min(minX, posX - halfL)
+        maxX = Math.max(maxX, posX + halfL)
+        minY = Math.min(minY, posY - halfH)
+        maxY = Math.max(maxY, posY + halfH)
+        minZ = Math.min(minZ, posZ - halfW)
+        maxZ = Math.max(maxZ, posZ + halfW)
+      }
+    }
   }
 
   // Include pallet positions
@@ -398,8 +444,8 @@ function Scene3D({
 
   // Calculate scene bounding box for camera and grid
   const bounds = useMemo(() => {
-    return calculateSceneBounds(packages, overflowPackages, pallets, containerType, scale)
-  }, [packages, overflowPackages, pallets, containerType, scale])
+    return calculateSceneBounds(packages, overflowPackages, pallets, containerType, scale, maxHeightLimit)
+  }, [packages, overflowPackages, pallets, containerType, scale, maxHeightLimit])
 
   // Calculate camera target
   const cameraTarget = useMemo(() => {
