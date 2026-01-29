@@ -130,8 +130,13 @@ function InputPanel({
           <input
             type="number"
             value={quantity}
-            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            onChange={(e) => {
+              const val = parseInt(e.target.value) || 1
+              setQuantity(Math.min(1600, Math.max(1, val)))
+            }}
             min="1"
+            max="1600"
+            maxLength="4"
             className="w-full px-3 py-2 bg-gray-600 border border-gray-500 rounded-md text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -215,7 +220,7 @@ function InputPanel({
                 {isMultiPallet ? t('totalShipment') : t('pallet')}
               </span>
             </div>
-            <div className="text-right text-sm text-green-300 leading-relaxed">
+            <div className="text-right text-sm text-green-300 leading-relaxed whitespace-nowrap">
               <div>{totalWeight.toFixed(1)} {t('kg')}</div>
               <div>{packages.length} {t('totalPackages')}</div>
             </div>
@@ -230,7 +235,7 @@ function InputPanel({
                 <div className="w-3 h-3 rounded bg-red-500 mt-0.5" />
                 <span className="text-sm font-semibold text-red-400">{t('overflow')}</span>
               </div>
-              <div className="text-right text-sm text-red-300 leading-relaxed">
+              <div className="text-right text-sm text-red-300 leading-relaxed whitespace-nowrap">
                 <div>{overflowPackages.reduce((sum, pkg) => sum + pkg.weight, 0).toFixed(1)} {t('kg')}</div>
                 <div>{overflowPackages.length} {t('totalPackages')}</div>
               </div>
