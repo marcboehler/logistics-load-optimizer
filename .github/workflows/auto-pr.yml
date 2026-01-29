@@ -29,26 +29,45 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Create Pull Request
-        id: cpr
+      - name: Create or Get Pull Request
+        id: pr
         if: success()
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: main
-          title: "🚀 Automated Update from AI Developer"
-          body: |
-            ## Auto-generated PR from Claude Code
-
-            This PR was automatically created after a successful build.
-
-            **Branch:** ${{ github.ref_name }}
-            **Commit:** ${{ github.sha }}
-          delete-branch: true
-
-      - name: Merge Pull Request
-        if: steps.cpr.outputs.pull-request-number
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr merge ${{ steps.cpr.outputs.pull-request-number }} --merge --admin --delete-branch
+          # Try to create a new PR, or get existing PR number
+          PR_URL=$(gh pr create \
+            --base main \
+            --head ${{ github.ref_name }} \
+            --title "🚀 Automated Update from AI Developer" \
+            --body "## Auto-generated PR from Claude Code
+
+          This PR was automatically created after a successful build.
+
+          **Branch:** ${{ github.ref_name }}
+          **Commit:** ${{ github.sha }}" 2>&1) || true
+
+          # Check if PR already exists
+          if echo "$PR_URL" | grep -q "already exists"; then
+            echo "PR already exists, fetching PR number..."
+            PR_NUMBER=$(gh pr list --head ${{ github.ref_name }} --json number --jq '.[0].number')
+          else
+            # Extract PR number from URL
+            PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          fi
+
+          echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "Pull Request Number: $PR_NUMBER"
+
+      - name: Merge Pull Request
+        if: success() && steps.pr.outputs.PR_NUMBER
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Merging PR #${{ steps.pr.outputs.PR_NUMBER }}..."
+
+          # Wait a moment for GitHub to process the PR
+          sleep 3
+
+          # Merge the PR
+          gh pr merge ${{ steps.pr.outputs.PR_NUMBER }} --merge --admin --delete-branch
