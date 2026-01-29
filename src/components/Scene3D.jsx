@@ -2,6 +2,7 @@ import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Canvas, useThree } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, Line, Text } from '@react-three/drei'
+import { EffectComposer, Outline, Selection, Select } from '@react-three/postprocessing'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
 import { PALLET, CONTAINER_CONFIG } from '../utils/palletStacking'
@@ -360,23 +361,33 @@ function HeightLimitIndicator({ maxHeightM, scale, palletPosition = { x: 0, z: 0
 }
 
 // Pallet with position offset
-function PositionedPallet({ scale, position, index, isSelected, opacity = 1.0 }) {
+function PositionedPallet({ scale, position, index, isSelected, opacity = 1.0, isGhost = false }) {
   const x = position.x * scale
   const z = position.z * scale
 
-  return (
+  const palletContent = (
     <group position={[x, 0, z]}>
-      <Pallet scale={scale} opacity={opacity} />
-      <mesh position={[PALLET.length * scale / 2, 0.02, PALLET.width * scale / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.3, 16]} />
-        <meshBasicMaterial color={isSelected ? '#22c55e' : '#6b7280'} transparent opacity={0.8 * opacity} />
-      </mesh>
+      <Pallet scale={scale} opacity={opacity} isGhost={isGhost} />
+      {/* Only show selection indicator when not in ghost mode */}
+      {!isGhost && (
+        <mesh position={[PALLET.length * scale / 2, 0.02, PALLET.width * scale / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+          <circleGeometry args={[0.3, 16]} />
+          <meshBasicMaterial color={isSelected ? '#22c55e' : '#6b7280'} transparent opacity={0.8} />
+        </mesh>
+      )}
     </group>
   )
+
+  // Wrap ghost items in Select for outline effect
+  if (isGhost) {
+    return <Select enabled>{palletContent}</Select>
+  }
+
+  return palletContent
 }
 
 // Large overflow placeholder (performance optimization)
-function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, opacity = 1.0 }) {
+function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, opacity = 1.0, isGhost = false }) {
   const config = CONTAINER_CONFIG[containerType]
 
   // Calculate position (same as overflow area)
@@ -410,11 +421,8 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
     ? overflowCount.toLocaleString()
     : '0'
 
-  // Determine if this is focused or ghost
-  const isFocused = opacity >= 1.0
-
-  // NUCLEAR FIX: Completely separate rendering paths
-  if (isFocused) {
+  // Completely separate rendering paths
+  if (!isGhost) {
     // === FOCUSED RENDERING: Full quality with text and edges ===
     return (
       <group>
@@ -462,20 +470,21 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
       </group>
     )
   } else {
-    // === GHOST RENDERING: Flat unlit, no text, no edges ===
+    // === GHOST RENDERING: 0% opacity but visible for outline detection ===
     return (
-      <group>
-        <mesh key="ghost-overflow" position={[centerX, centerY, centerZ]}>
-          <boxGeometry args={[width, height, depth]} />
-          <meshBasicMaterial
-            color="#808080"
-            transparent={true}
-            opacity={0.05}
-            depthWrite={false}
-          />
-        </mesh>
-        {/* NO edges, NO text for ghost overflow */}
-      </group>
+      <Select enabled>
+        <group>
+          <mesh key="ghost-overflow" position={[centerX, centerY, centerZ]}>
+            <boxGeometry args={[width, height, depth]} />
+            <meshBasicMaterial
+              color="#808080"
+              transparent={true}
+              opacity={0}
+              depthWrite={false}
+            />
+          </mesh>
+        </group>
+      </Select>
     )
   }
 }
@@ -521,109 +530,127 @@ function Scene3D({
       camera={{ position: [initialDistance, initialDistance * 0.6, initialDistance], fov: 50 }}
       className="w-full h-full"
     >
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[30, 40, 30]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
-      <pointLight position={[-20, 20, -20]} intensity={0.3} />
-      <hemisphereLight intensity={0.3} />
+      <Selection>
+        {/* Lighting */}
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[30, 40, 30]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
+        <pointLight position={[-20, 20, -20]} intensity={0.3} />
+        <hemisphereLight intensity={0.3} />
 
-      {/* Environment */}
-      <Environment preset="warehouse" />
+        {/* Environment */}
+        <Environment preset="warehouse" />
 
-      {/* Dynamic Ground Grid */}
-      <DynamicGrid bounds={bounds} />
+        {/* Dynamic Ground Grid */}
+        <DynamicGrid bounds={bounds} />
 
-      {/* Camera Controller for auto-zoom */}
-      <CameraController bounds={bounds} selectedPallet={selectedPallet} pallets={pallets} scale={scale} />
+        {/* Camera Controller for auto-zoom */}
+        <CameraController bounds={bounds} selectedPallet={selectedPallet} pallets={pallets} scale={scale} />
 
-      {/* Container footprint */}
-      <ContainerFootprint containerType={containerType} scale={scale} />
+        {/* Container footprint */}
+        <ContainerFootprint containerType={containerType} scale={scale} />
 
-      {/* Render pallets and packages */}
-      {pallets.length > 0 ? (
-        <>
-          {pallets.map((pallet) => {
-            // Opacity: 100% if no selection or this pallet is selected, 5% ghost mode otherwise
-            const palletOpacity = selectedPallet === null || selectedPallet === pallet.index ? 1.0 : 0.05
-            return (
-              <group key={`pallet-group-${pallet.index}`}>
-                <PositionedPallet
+        {/* Render pallets and packages */}
+        {pallets.length > 0 ? (
+          <>
+            {pallets.map((pallet) => {
+              // Determine if this pallet is in ghost mode
+              const isGhost = selectedPallet !== null && selectedPallet !== pallet.index
+              return (
+                <group key={`pallet-group-${pallet.index}`}>
+                  <PositionedPallet
+                    scale={scale}
+                    position={pallet.position}
+                    index={pallet.index}
+                    isSelected={selectedPallet === pallet.index}
+                    opacity={isGhost ? 0 : 1.0}
+                    isGhost={isGhost}
+                  />
+                  {/* Only show height indicator for focused pallets */}
+                  {!isGhost && (
+                    <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} palletPosition={pallet.position} />
+                  )}
+                </group>
+              )
+            })}
+            {packages.map((pkg) => {
+              // Determine if this package is in ghost mode
+              const isGhost = selectedPallet !== null && pkg.palletIndex !== selectedPallet
+              return (
+                <StackedPackage
+                  key={pkg.id}
+                  pkg={pkg}
                   scale={scale}
-                  position={pallet.position}
-                  index={pallet.index}
-                  isSelected={selectedPallet === pallet.index}
-                  opacity={palletOpacity}
+                  palletOffsetX={0}
+                  palletOffsetZ={0}
+                  opacity={isGhost ? 0 : 1.0}
+                  isGhost={isGhost}
                 />
-                <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} palletPosition={pallet.position} />
-              </group>
-            )
-          })}
-          {packages.map((pkg) => {
-            // Opacity based on whether this package's pallet is selected (ghost mode = 5%)
-            const pkgOpacity = selectedPallet === null || pkg.palletIndex === selectedPallet ? 1.0 : 0.05
-            return (
+              )
+            })}
+            {containerType !== 'none' ? (
+              <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
+            ) : (
+              <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
+            )}
+          </>
+        ) : (
+          <>
+            <Pallet scale={scale} />
+            <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
+            <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
+            {packages.map((pkg) => (
+              <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
+            ))}
+          </>
+        )}
+
+        {/* Overflow packages (red stack) - use placeholder for performance when count > threshold */}
+        {hasOverflow && (
+          useOverflowPlaceholder ? (
+            <OverflowPlaceholder
+              scale={scale}
+              containerType={containerType}
+              overflowCount={overflowPackages.length}
+              maxHeightM={maxHeightLimit}
+              isGhost={selectedPallet !== null}
+            />
+          ) : (
+            overflowPackages.map((pkg) => (
               <StackedPackage
-                key={pkg.id}
+                key={`overflow-${pkg.id}`}
                 pkg={pkg}
                 scale={scale}
                 palletOffsetX={0}
                 palletOffsetZ={0}
-                opacity={pkgOpacity}
+                opacity={selectedPallet === null ? 1.0 : 0}
+                isGhost={selectedPallet !== null}
               />
-            )
-          })}
-          {containerType !== 'none' ? (
-            <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
-          ) : (
-            <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
-          )}
-        </>
-      ) : (
-        <>
-          <Pallet scale={scale} />
-          <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
-          <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
-          {packages.map((pkg) => (
-            <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
-          ))}
-        </>
-      )}
+            ))
+          )
+        )}
 
-      {/* Overflow packages (red stack) - use placeholder for performance when count > threshold */}
-      {/* Opacity: 5% ghost mode when a specific pallet is selected, 100% otherwise */}
-      {hasOverflow && (
-        useOverflowPlaceholder ? (
-          <OverflowPlaceholder
-            scale={scale}
-            containerType={containerType}
-            overflowCount={overflowPackages.length}
-            maxHeightM={maxHeightLimit}
-            opacity={selectedPallet === null ? 1.0 : 0.05}
+        {/* Outline Effect for ghost items (blueprint mode) */}
+        <EffectComposer autoClear={false}>
+          <Outline
+            visibleEdgeColor={0x94a3b8}
+            hiddenEdgeColor={0x000000}
+            edgeStrength={10}
+            width={500}
+            blur={false}
           />
-        ) : (
-          overflowPackages.map((pkg) => (
-            <StackedPackage
-              key={`overflow-${pkg.id}`}
-              pkg={pkg}
-              scale={scale}
-              palletOffsetX={0}
-              palletOffsetZ={0}
-              opacity={selectedPallet === null ? 1.0 : 0.05}
-            />
-          ))
-        )
-      )}
+        </EffectComposer>
 
-      {/* Camera Controls */}
-      <OrbitControls
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
-        minDistance={5}
-        maxDistance={200}
-        maxPolarAngle={Math.PI / 2 - 0.05}
-        target={cameraTarget}
-      />
+        {/* Camera Controls */}
+        <OrbitControls
+          enablePan={true}
+          enableZoom={true}
+          enableRotate={true}
+          minDistance={5}
+          maxDistance={200}
+          maxPolarAngle={Math.PI / 2 - 0.05}
+          target={cameraTarget}
+        />
+      </Selection>
     </Canvas>
   )
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three'
+import { Select } from '@react-three/postprocessing'
 
-function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.0 }) {
+function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.0, isGhost = false }) {
   // Position from stacking algorithm (in mm, needs to be converted)
   const posX = (pkg.position.x * scale) + palletOffsetX
   const posY = pkg.position.y * scale
@@ -11,14 +12,7 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
   const boxHeight = pkg.dimensions.height * scale
   const boxDepth = pkg.dimensions.width * scale
 
-  // Determine if this is a ghost (unfocused) item
-  // opacity < 1.0 means it's in ghost mode
-  const isFocused = opacity >= 1.0
-
-  // VERY LOW opacity to minimize alpha stacking effect
-  const ghostOpacity = 0.02
-
-  if (isFocused) {
+  if (!isGhost) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[posX, posY, posZ]}>
@@ -43,19 +37,21 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
       </group>
     )
   } else {
-    // === GHOST RENDERING: Flat unlit, very low opacity ===
+    // === GHOST RENDERING: 0% opacity but visible for outline detection ===
     return (
-      <group position={[posX, posY, posZ]}>
-        <mesh key="ghost-pkg">
-          <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
-          <meshBasicMaterial
-            color="#808080"
-            transparent={true}
-            opacity={ghostOpacity}
-            depthWrite={false}
-          />
-        </mesh>
-      </group>
+      <Select enabled>
+        <group position={[posX, posY, posZ]}>
+          <mesh key="ghost-pkg">
+            <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
+            <meshBasicMaterial
+              color="#808080"
+              transparent={true}
+              opacity={0}
+              depthWrite={false}
+            />
+          </mesh>
+        </group>
+      </Select>
     )
   }
 }

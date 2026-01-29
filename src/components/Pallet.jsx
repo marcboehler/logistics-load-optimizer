@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 
-function Pallet({ scale = 0.01, opacity = 1.0 }) {
+function Pallet({ scale = 0.01, opacity = 1.0, isGhost = false }) {
   // Europalette Maße in mm: 1200 x 800 x 144
   const palletWidth = 1200 * scale
   const palletDepth = 800 * scale
@@ -13,14 +13,7 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
-  // Determine if this is a ghost (unfocused) item
-  // opacity < 1.0 means it's in ghost mode
-  const isFocused = opacity >= 1.0
-
-  // VERY LOW opacity to minimize alpha stacking effect
-  const ghostOpacity = 0.02
-
-  if (isFocused) {
+  if (!isGhost) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
@@ -35,7 +28,8 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
       </group>
     )
   } else {
-    // === GHOST RENDERING: Flat unlit, very low opacity ===
+    // === GHOST RENDERING: 0% opacity but visible for outline detection ===
+    // Note: Select wrapper is applied in PositionedPallet for the pallet
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
         <mesh key="ghost-pallet">
@@ -43,7 +37,7 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
           <meshBasicMaterial
             color="#808080"
             transparent={true}
-            opacity={ghostOpacity}
+            opacity={0}
             depthWrite={false}
           />
         </mesh>
