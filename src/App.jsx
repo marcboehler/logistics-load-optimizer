@@ -60,7 +60,7 @@ function AppContent() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Linke Seite: Eingabemaske */}
-        <div className="w-80 bg-gray-800 p-4 overflow-hidden border-r border-gray-700 flex flex-col">
+        <div className="w-80 bg-gray-800 p-4 overflow-y-auto border-r border-gray-700 flex flex-col">
           <InputPanel
             packages={packages}
             overflowPackages={overflowPackages}

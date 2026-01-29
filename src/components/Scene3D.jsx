@@ -189,11 +189,16 @@ function ContainerOverflowIndicator({ scale, containerType, hasOverflow }) {
   )
 }
 
-// Single pallet overflow indicator
-function SinglePalletOverflowIndicator({ scale, hasOverflow }) {
+// No-container mode overflow indicator (beside the pallet grid)
+function NoContainerOverflowIndicator({ scale, hasOverflow, palletCount }) {
   if (!hasOverflow) return null
 
-  const offsetX = 1500 * scale
+  // Calculate position beside the pallet grid (to the right)
+  const palletsPerRow = 4 // NO_CONTAINER_CONFIG.palletsPerRow
+  const palletGap = 100 // NO_CONTAINER_CONFIG.palletGap
+  const palletSpacingX = (PALLET.length + palletGap) * scale
+  const offsetX = palletsPerRow * palletSpacingX + (300 * scale) // 300mm gap from grid
+
   const length = PALLET.length * scale
   const width = PALLET.width * scale
 
@@ -383,7 +388,7 @@ function Scene3D({
       <ContainerFootprint containerType={containerType} scale={scale} />
 
       {/* Render pallets and packages */}
-      {isMultiPallet ? (
+      {pallets.length > 0 ? (
         <>
           {pallets.map((pallet) => (
             <group key={`pallet-group-${pallet.index}`}>
@@ -394,13 +399,17 @@ function Scene3D({
           {packages.map((pkg) => (
             <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
           ))}
-          <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
+          {containerType !== 'none' ? (
+            <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
+          ) : (
+            <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} palletCount={pallets.length} />
+          )}
         </>
       ) : (
         <>
           <Pallet scale={scale} />
           <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
-          <SinglePalletOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
+          <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} palletCount={1} />
           {packages.map((pkg) => (
             <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
           ))}
