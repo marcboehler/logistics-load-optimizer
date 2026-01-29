@@ -24,8 +24,8 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
 
   return (
     <group position={[posX, posY, posZ]}>
-      {/* Paket-Körper - conditional material based on focus state */}
-      <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
+      {/* Paket-Körper - key forces re-render when switching materials */}
+      <mesh key={isGhost ? 'ghost' : 'solid'} castShadow={!isGhost} receiveShadow={!isGhost}>
         <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
         {isGhost ? (
           // Unlit flat material for background items (no shading noise)
