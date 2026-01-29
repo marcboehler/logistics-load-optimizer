@@ -239,8 +239,23 @@ export const products = [
 // Helper to get product by ID
 export const getProductById = (id) => products.find(p => p.id === id)
 
-// Get random products
+// Get random products - allows more than 200 by reusing products with unique IDs
 export const getRandomProducts = (count) => {
-  const shuffled = [...products].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, Math.min(count, products.length))
+  const result = []
+  let idCounter = 1
+
+  while (result.length < count) {
+    // Shuffle and pick from pool
+    const shuffled = [...products].sort(() => Math.random() - 0.5)
+    const needed = Math.min(count - result.length, shuffled.length)
+
+    for (let i = 0; i < needed; i++) {
+      result.push({
+        ...shuffled[i],
+        id: `PKG-${String(idCounter++).padStart(5, '0')}` // Unique ID for each instance
+      })
+    }
+  }
+
+  return result
 }

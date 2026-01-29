@@ -35,10 +35,10 @@ export const OVERFLOW_AREA = {
   floorHeight: 0
 }
 
-// Default configuration for "no container" mode (unlimited pallets in grid)
+// Default configuration for "no container" mode (single pallet only)
 const NO_CONTAINER_CONFIG = {
-  maxPallets: 200, // Allow up to 200 pallets when no container is selected
-  palletsPerRow: 4, // 4 pallets per row in grid layout
+  maxPallets: 1, // Only ONE pallet when no container is selected - overflow goes to red stack
+  palletsPerRow: 4, // 4 pallets per row in grid layout (for container mode)
   palletGap: 100 // 100mm gap between pallets
 }
 
@@ -774,11 +774,9 @@ const calculateContainerOverflowPositions = (overflowProducts, containerType, pa
     // Container mode: place behind container (Z direction)
     overflowOffsetZ = config.width + 500
   } else {
-    // No-container mode: place beside the pallet grid (X direction)
-    // Calculate the rightmost X position of the grid
-    const palletsPerRow = NO_CONTAINER_CONFIG.palletsPerRow
-    const palletSpacingX = PALLET.length + NO_CONTAINER_CONFIG.palletGap
-    overflowOffsetX = palletsPerRow * palletSpacingX + 300 // 300mm gap from grid
+    // No-container mode (single pallet): place beside the pallet (X direction)
+    // 1500mm offset from pallet origin (pallet is 1200mm wide, so 300mm gap)
+    overflowOffsetX = PALLET.length + 300
   }
 
   const positionedPackages = []

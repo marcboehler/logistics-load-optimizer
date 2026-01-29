@@ -189,15 +189,12 @@ function ContainerOverflowIndicator({ scale, containerType, hasOverflow }) {
   )
 }
 
-// No-container mode overflow indicator (beside the pallet grid)
-function NoContainerOverflowIndicator({ scale, hasOverflow, palletCount }) {
+// No-container mode overflow indicator (beside the single pallet)
+function NoContainerOverflowIndicator({ scale, hasOverflow }) {
   if (!hasOverflow) return null
 
-  // Calculate position beside the pallet grid (to the right)
-  const palletsPerRow = 4 // NO_CONTAINER_CONFIG.palletsPerRow
-  const palletGap = 100 // NO_CONTAINER_CONFIG.palletGap
-  const palletSpacingX = (PALLET.length + palletGap) * scale
-  const offsetX = palletsPerRow * palletSpacingX + (300 * scale) // 300mm gap from grid
+  // Position beside single pallet (1500mm = pallet length 1200mm + 300mm gap)
+  const offsetX = (PALLET.length + 300) * scale
 
   const length = PALLET.length * scale
   const width = PALLET.width * scale
@@ -402,14 +399,14 @@ function Scene3D({
           {containerType !== 'none' ? (
             <ContainerOverflowIndicator scale={scale} containerType={containerType} hasOverflow={hasOverflow} />
           ) : (
-            <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} palletCount={pallets.length} />
+            <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
           )}
         </>
       ) : (
         <>
           <Pallet scale={scale} />
           <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
-          <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} palletCount={1} />
+          <NoContainerOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
           {packages.map((pkg) => (
             <StackedPackage key={pkg.id} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
           ))}
