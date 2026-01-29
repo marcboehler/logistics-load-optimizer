@@ -759,11 +759,27 @@ const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, cont
 }
 
 /**
- * Calculate positions for overflow packages behind the container
+ * Calculate positions for overflow packages
+ * For containers: behind the container (Z offset)
+ * For no-container: beside the pallets grid (X offset) on the ground floor
  */
-const calculateContainerOverflowPositions = (overflowProducts, containerType) => {
+const calculateContainerOverflowPositions = (overflowProducts, containerType, palletCount = 1) => {
   const config = CONTAINER_CONFIG[containerType]
-  const overflowOffsetZ = config ? config.width + 500 : 2500 // Place behind container
+
+  // Calculate offset based on mode
+  let overflowOffsetX = 0
+  let overflowOffsetZ = 0
+
+  if (config) {
+    // Container mode: place behind container (Z direction)
+    overflowOffsetZ = config.width + 500
+  } else {
+    // No-container mode: place beside the pallet grid (X direction)
+    // Calculate the rightmost X position of the grid
+    const palletsPerRow = NO_CONTAINER_CONFIG.palletsPerRow
+    const palletSpacingX = PALLET.length + NO_CONTAINER_CONFIG.palletGap
+    overflowOffsetX = palletsPerRow * palletSpacingX + 300 // 300mm gap from grid
+  }
 
   const positionedPackages = []
   const placedBoxes = []
@@ -772,7 +788,7 @@ const calculateContainerOverflowPositions = (overflowProducts, containerType) =>
     const carton = getCartonById(product.cartonId)
     if (!carton) continue
 
-    // Simple stacking in overflow area
+    // Simple stacking in overflow area (on the floor, y starts at 0)
     const placement = tryPlaceBoxInOverflowArea(
       carton.length,
       carton.width,
@@ -792,8 +808,8 @@ const calculateContainerOverflowPositions = (overflowProducts, containerType) =>
         isOverflow: true,
         overflowReason: 'container_full',
         position: {
-          x: placement.x + placement.length / 2,
-          y: placement.y + placement.height / 2,
+          x: overflowOffsetX + placement.x + placement.length / 2,
+          y: placement.y + placement.height / 2, // Starts from floor (y=0)
           z: overflowOffsetZ + placement.z + placement.width / 2
         },
         dimensions: {
@@ -803,7 +819,7 @@ const calculateContainerOverflowPositions = (overflowProducts, containerType) =>
         }
       })
     } else {
-      // Fallback: stack vertically
+      // Fallback: stack vertically on the floor
       const fallbackY = placedBoxes.length > 0
         ? Math.max(...placedBoxes.map(b => b.y + b.height))
         : 0
@@ -826,7 +842,7 @@ const calculateContainerOverflowPositions = (overflowProducts, containerType) =>
         isOverflow: true,
         overflowReason: 'container_full',
         position: {
-          x: carton.length / 2,
+          x: overflowOffsetX + carton.length / 2,
           y: fallbackY + carton.height / 2,
           z: overflowOffsetZ + carton.width / 2
         },
