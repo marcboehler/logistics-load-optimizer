@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Scene3D from './components/Scene3D'
 import InputPanel from './components/InputPanel'
 import Header from './components/Header'
@@ -45,14 +45,36 @@ function AppContent() {
   // Container type: 'none', '20ft', '40ft'
   const [containerType, setContainerType] = useState('none')
 
-  const handleFillPallet = (quantity) => {
+  // Quantity state (lifted from InputPanel for reactive recalculation)
+  const [quantity, setQuantity] = useState(500)
+
+  // Track if initial load has happened (to avoid recalculating on mount)
+  const hasLoadedRef = useRef(false)
+
+  // REACTIVE: Recalculate when containerType changes (if packages exist)
+  useEffect(() => {
+    // Skip on initial mount
+    if (!hasLoadedRef.current) {
+      return
+    }
+
+    // Only recalculate if we have packages loaded
+    if (packages.length > 0 || overflowPackages.length > 0) {
+      // Trigger recalculation with current quantity
+      handleFillPallet(quantity)
+    }
+  }, [containerType]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleFillPallet = (qty) => {
+    // Mark that we've loaded at least once
+    hasLoadedRef.current = true
     // Show loading overlay immediately
     setIsCalculating(true)
 
     // Use setTimeout to allow UI to render loading state before heavy calculation
     setTimeout(() => {
       try {
-        const result = fillPalletWithProducts(quantity, maxHeight, maxWeight, containerType)
+        const result = fillPalletWithProducts(qty, maxHeight, maxWeight, containerType)
         setPackages(result.packages)
         setOverflowPackages(result.overflowPackages || [])
         setPallets(result.pallets || [])
@@ -116,6 +138,8 @@ function AppContent() {
             selectedPallet={selectedPallet}
             setSelectedPallet={setSelectedPallet}
             isCalculating={isCalculating}
+            quantity={quantity}
+            setQuantity={setQuantity}
           />
         </div>
 
