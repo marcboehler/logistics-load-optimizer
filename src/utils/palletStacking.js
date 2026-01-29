@@ -11,16 +11,20 @@ const PALLET = {
 // Max weight for color calculation (kg)
 const MAX_PACKAGE_WEIGHT = 20
 
+// Overflow color for packages that could not be placed
+export const OVERFLOW_COLOR = '#FF0000'
+
 /**
  * Calculate heatmap color based on weight using linear interpolation
- * Light (0kg): #FFFFE0 (Light Yellow)
- * Heavy (20kg): #8B0000 (Dark Red)
+ * Light (0kg): #E0FFF0 (Light Mint Green)
+ * Heavy (20kg): #006400 (Dark Forest Green)
  */
 export const getHeatmapColor = (weight) => {
   const normalizedWeight = Math.min(Math.max(weight, 0), MAX_PACKAGE_WEIGHT) / MAX_PACKAGE_WEIGHT
-  const r = Math.round(255 - (255 - 139) * normalizedWeight)
-  const g = Math.round(255 - 255 * normalizedWeight)
-  const b = Math.round(224 - 224 * normalizedWeight)
+  // Light Mint: RGB(224, 255, 240) -> Dark Forest Green: RGB(0, 100, 0)
+  const r = Math.round(224 - 224 * normalizedWeight)
+  const g = Math.round(255 - (255 - 100) * normalizedWeight)
+  const b = Math.round(240 - 240 * normalizedWeight)
   return `rgb(${r}, ${g}, ${b})`
 }
 
@@ -266,9 +270,11 @@ const tryPlaceBox = (length, width, height, placedBoxes, maxHeightMm) => {
 
 /**
  * Advanced 3D Bin Packing Algorithm with rotation and gravity
+ * Returns both placed packages and overflow packages (those that couldn't be placed)
  */
 export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 2300, maxWeightKg = 700) => {
   const placedPackages = []
+  const overflowPackages = []
   const placedBoxes = [] // Simplified box representation for collision
   let currentTotalWeight = 0
   let totalVolume = 0
@@ -279,6 +285,16 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
 
     // Check weight limit
     if (currentTotalWeight + product.weight > maxWeightKg) {
+      // Can't place due to weight - mark as overflow
+      overflowPackages.push({
+        ...product,
+        length: carton.length,
+        width: carton.width,
+        height: carton.height,
+        color: OVERFLOW_COLOR,
+        isOverflow: true,
+        overflowReason: 'weight'
+      })
       continue
     }
 
@@ -292,7 +308,17 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
     )
 
     if (!placement) {
-      continue // Can't place this package
+      // Can't place due to space/height - mark as overflow
+      overflowPackages.push({
+        ...product,
+        length: carton.length,
+        width: carton.width,
+        height: carton.height,
+        color: OVERFLOW_COLOR,
+        isOverflow: true,
+        overflowReason: 'space'
+      })
+      continue
     }
 
     // Add to placed boxes
@@ -305,6 +331,7 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
       width: carton.width,
       height: carton.height,
       color: getHeatmapColor(product.weight),
+      isOverflow: false,
       position: {
         x: placement.x + placement.length / 2,
         y: placement.y + placement.height / 2,
@@ -334,10 +361,14 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
 
   return {
     packages: placedPackages,
+    overflowPackages: overflowPackages,
     totalWeight: currentTotalWeight,
     maxHeight: maxHeight,
     totalVolume: totalVolume,
-    volumeUtilization: Math.min(volumeUtilization, 100)
+    volumeUtilization: Math.min(volumeUtilization, 100),
+    requestedCount: sortedProducts.length,
+    placedCount: placedPackages.length,
+    overflowCount: overflowPackages.length
   }
 }
 
