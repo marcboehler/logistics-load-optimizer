@@ -35,8 +35,9 @@ export const translations = {
     meter: 'm',
 
     // Stats
+    pallet: 'Palette',
     totalWeight: 'Gesamtgewicht',
-    totalPackages: 'Anzahl Pakete',
+    totalPackages: 'Pakete',
     totalHeight: 'Stapelhöhe',
     palletUtilization: 'Auslastung',
     weightUtilization: 'Gewichtsauslastung',
@@ -94,8 +95,9 @@ export const translations = {
     meter: 'm',
 
     // Stats
+    pallet: 'Pallet',
     totalWeight: 'Total Weight',
-    totalPackages: 'Total Packages',
+    totalPackages: 'items',
     totalHeight: 'Stack Height',
     palletUtilization: 'Utilization',
     weightUtilization: 'Weight Utilization',

@@ -8,6 +8,14 @@ const PALLET = {
   height: 144
 }
 
+// Overflow area configuration (next to the pallet)
+export const OVERFLOW_AREA = {
+  offsetX: 1500, // 1500mm to the right of pallet origin
+  length: 1200,  // Same size as pallet for overflow stacking
+  width: 800,
+  floorHeight: 0 // Overflow packages start from floor level
+}
+
 // Max weight for color calculation (kg)
 const MAX_PACKAGE_WEIGHT = 20
 
@@ -359,9 +367,12 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
   const availableVolume = PALLET.length * PALLET.width * (maxHeight > 0 ? maxHeight : 1)
   const volumeUtilization = availableVolume > 0 ? (usedVolume / availableVolume) * 100 : 0
 
+  // Calculate positions for overflow packages in the red stack area
+  const positionedOverflowPackages = calculateOverflowPositions(overflowPackages)
+
   return {
     packages: placedPackages,
-    overflowPackages: overflowPackages,
+    overflowPackages: positionedOverflowPackages,
     totalWeight: currentTotalWeight,
     maxHeight: maxHeight,
     totalVolume: totalVolume,
@@ -370,6 +381,176 @@ export const calculateAdvancedPackagePositions = (sortedProducts, maxHeightMm = 
     placedCount: placedPackages.length,
     overflowCount: overflowPackages.length
   }
+}
+
+/**
+ * Calculate positions for overflow packages in the red stack area
+ * Uses a simple layer-based stacking approach
+ */
+const calculateOverflowPositions = (overflowPackages) => {
+  if (overflowPackages.length === 0) return []
+
+  const positionedPackages = []
+  const placedBoxes = []
+
+  for (const pkg of overflowPackages) {
+    // Try to find a position in the overflow area
+    const placement = tryPlaceBoxInOverflowArea(
+      pkg.length,
+      pkg.width,
+      pkg.height,
+      placedBoxes
+    )
+
+    if (placement) {
+      placedBoxes.push(placement)
+
+      positionedPackages.push({
+        ...pkg,
+        position: {
+          x: OVERFLOW_AREA.offsetX + placement.x + placement.length / 2,
+          y: placement.y + placement.height / 2,
+          z: placement.z + placement.width / 2
+        },
+        dimensions: {
+          length: placement.length,
+          width: placement.width,
+          height: placement.height
+        }
+      })
+    } else {
+      // If can't fit in overflow area either, just stack vertically
+      const fallbackY = placedBoxes.length > 0
+        ? Math.max(...placedBoxes.map(b => b.y + b.height))
+        : OVERFLOW_AREA.floorHeight
+
+      const fallbackPlacement = {
+        x: 0,
+        y: fallbackY,
+        z: 0,
+        length: pkg.length,
+        width: pkg.width,
+        height: pkg.height
+      }
+      placedBoxes.push(fallbackPlacement)
+
+      positionedPackages.push({
+        ...pkg,
+        position: {
+          x: OVERFLOW_AREA.offsetX + pkg.length / 2,
+          y: fallbackY + pkg.height / 2,
+          z: pkg.width / 2
+        },
+        dimensions: {
+          length: pkg.length,
+          width: pkg.width,
+          height: pkg.height
+        }
+      })
+    }
+  }
+
+  return positionedPackages
+}
+
+/**
+ * Try to place a box in the overflow area using similar logic to pallet placement
+ */
+const tryPlaceBoxInOverflowArea = (length, width, height, placedBoxes) => {
+  const positions = generateOverflowCandidatePositions(placedBoxes)
+
+  const orientations = [
+    { l: length, w: width },
+    { l: width, w: length }
+  ]
+
+  let bestPlacement = null
+  let bestScore = Infinity
+
+  for (const pos of positions) {
+    for (const orient of orientations) {
+      const testBox = {
+        x: pos.x,
+        z: pos.z,
+        length: orient.l,
+        width: orient.w,
+        height: height
+      }
+
+      // Check if fits in overflow area
+      if (testBox.x + testBox.length > OVERFLOW_AREA.length ||
+          testBox.z + testBox.width > OVERFLOW_AREA.width) {
+        continue
+      }
+
+      // Find lowest Y position
+      let lowestY = OVERFLOW_AREA.floorHeight
+      for (const placed of placedBoxes) {
+        const overlapX = pos.x < placed.x + placed.length && pos.x + orient.l > placed.x
+        const overlapZ = pos.z < placed.z + placed.width && pos.z + orient.w > placed.z
+
+        if (overlapX && overlapZ) {
+          const topOfPlaced = placed.y + placed.height
+          if (topOfPlaced > lowestY) {
+            lowestY = topOfPlaced
+          }
+        }
+      }
+
+      testBox.y = lowestY
+
+      // Check collision
+      if (hasCollision(testBox, placedBoxes)) continue
+
+      // Score: prefer lower and closer to origin
+      const score = lowestY * 10 + pos.x + pos.z
+
+      if (score < bestScore) {
+        bestScore = score
+        bestPlacement = {
+          x: pos.x,
+          y: lowestY,
+          z: pos.z,
+          length: orient.l,
+          width: orient.w,
+          height: height
+        }
+      }
+    }
+  }
+
+  return bestPlacement
+}
+
+/**
+ * Generate candidate positions for overflow area
+ */
+const generateOverflowCandidatePositions = (placedBoxes) => {
+  const positions = [{ x: 0, z: 0 }]
+
+  for (const box of placedBoxes) {
+    positions.push(
+      { x: box.x + box.length, z: box.z },
+      { x: box.x, z: box.z + box.width },
+      { x: box.x + box.length, z: box.z + box.width }
+    )
+  }
+
+  const unique = []
+  const seen = new Set()
+
+  for (const pos of positions) {
+    const key = `${Math.round(pos.x)},${Math.round(pos.z)}`
+    if (!seen.has(key) && pos.x >= 0 && pos.z >= 0 &&
+        pos.x < OVERFLOW_AREA.length && pos.z < OVERFLOW_AREA.width) {
+      seen.add(key)
+      unique.push(pos)
+    }
+  }
+
+  unique.sort((a, b) => (a.x + a.z) - (b.x + b.z))
+
+  return unique
 }
 
 /**

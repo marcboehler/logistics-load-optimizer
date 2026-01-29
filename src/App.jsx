@@ -65,6 +65,7 @@ function AppContent() {
         <div className="flex-1">
           <Scene3D
             packages={packages}
+            overflowPackages={overflowPackages}
             maxHeightLimit={maxHeight}
             containerType={containerType}
           />
