@@ -69,10 +69,10 @@ const calculateSceneBounds = (packages, overflowPackages, pallets, containerType
       // Use placeholder dimensions for bounds calculation
       const placeholderWidth = PALLET.length * scale
       const placeholderDepth = PALLET.width * scale
-      const placeholderHeight = maxHeightLimit * 1.5 // Same as OverflowPlaceholder
+      const placeholderHeight = Math.max(maxHeightLimit * 6, 2.0) // Same as OverflowPlaceholder (6x height)
 
       maxX = Math.max(maxX, overflowOffsetX + placeholderWidth)
-      maxY = Math.max(maxY, placeholderHeight)
+      maxY = Math.max(maxY, placeholderHeight + 4) // Add extra for text above
       maxZ = Math.max(maxZ, overflowOffsetZ + placeholderDepth)
     } else {
       // Include individual overflow packages
@@ -391,19 +391,19 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
     offsetX = (PALLET.length + 300) * scale
   }
 
-  // Placeholder dimensions - ensure valid values
+  // Placeholder dimensions - MASSIVE height to represent huge overflow pile
   const width = PALLET.length * scale
   const depth = PALLET.width * scale
-  const height = Math.max(maxHeightM * 1.5, 0.5) // 1.5x max stack height, minimum 0.5
+  const height = Math.max(maxHeightM * 6, 2.0) // 6x max stack height for dramatic effect
 
   const centerX = offsetX + width / 2
   const centerY = height / 2
   const centerZ = offsetZ + depth / 2
 
-  // Text positioning - three-line block above the box
-  const textBaseY = height + 0.2
-  const largeFontSize = 0.8 // Large number font
-  const smallFontSize = 0.25 // Small label font
+  // Text positioning - LARGE text block above the box (spans ~60% of pallet width)
+  const textBaseY = height + 0.4
+  const largeFontSize = 2.5 // HUGE number font - dominates the view
+  const smallFontSize = 0.7 // Proportionally larger labels
 
   // Safety check for valid count
   const displayCount = typeof overflowCount === 'number' && !isNaN(overflowCount)
@@ -424,28 +424,28 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         <lineBasicMaterial color="#990000" />
       </lineSegments>
 
-      {/* Three-line text block above the box - NO custom font (uses default) */}
+      {/* Three-line text block above the box - LARGE and dramatic */}
       {/* Line 1: "OVERFLOW:" label (top) */}
       <Text
-        position={[centerX, textBaseY + largeFontSize + smallFontSize + 0.2, centerZ]}
+        position={[centerX, textBaseY + largeFontSize + smallFontSize + 0.5, centerZ]}
         fontSize={smallFontSize}
         color="#FFFFFF"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.015}
+        outlineWidth={0.04}
         outlineColor="#000000"
       >
         OVERFLOW:
       </Text>
 
-      {/* Line 2: The big number (middle) */}
+      {/* Line 2: The big number (middle) - DOMINANT */}
       <Text
-        position={[centerX, textBaseY + smallFontSize + 0.1, centerZ]}
+        position={[centerX, textBaseY + smallFontSize + 0.3, centerZ]}
         fontSize={largeFontSize}
         color="#FFFF00"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.03}
+        outlineWidth={0.08}
         outlineColor="#000000"
       >
         {displayCount}
@@ -458,7 +458,7 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         color="#FFFFFF"
         anchorX="center"
         anchorY="bottom"
-        outlineWidth={0.015}
+        outlineWidth={0.04}
         outlineColor="#000000"
       >
         ITEMS
