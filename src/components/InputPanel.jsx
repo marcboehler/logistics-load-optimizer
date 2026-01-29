@@ -4,6 +4,7 @@ import { useLanguage } from '../i18n/LanguageContext'
 function InputPanel({
   packages,
   overflowPackages = [],
+  pallets = [],
   onFillPallet,
   onClearPallet,
   totalWeight,
@@ -14,7 +15,12 @@ function InputPanel({
   maxWeight,
   setMaxWeight,
   containerType,
-  setContainerType
+  setContainerType,
+  totalPallets = 0,
+  maxPallets = 1,
+  containerUtilization = 0,
+  selectedPallet,
+  setSelectedPallet
 }) {
   const { t } = useLanguage()
   const [quantity, setQuantity] = useState(10)
@@ -23,9 +29,30 @@ function InputPanel({
     onFillPallet(quantity)
   }
 
+  const handlePrevPallet = () => {
+    if (selectedPallet === null) {
+      setSelectedPallet(totalPallets - 1)
+    } else if (selectedPallet > 0) {
+      setSelectedPallet(selectedPallet - 1)
+    } else {
+      setSelectedPallet(null) // Go back to "All"
+    }
+  }
+
+  const handleNextPallet = () => {
+    if (selectedPallet === null) {
+      setSelectedPallet(0)
+    } else if (selectedPallet < totalPallets - 1) {
+      setSelectedPallet(selectedPallet + 1)
+    } else {
+      setSelectedPallet(null) // Go back to "All"
+    }
+  }
+
   // Calculate utilization percentages
   const weightUtilization = maxWeight > 0 ? (totalWeight / maxWeight) * 100 : 0
   const heightUtilization = maxHeight > 0 ? (totalHeight / (maxHeight * 1000)) * 100 : 0
+  const isMultiPallet = containerType !== 'none' && totalPallets > 0
 
   return (
     <div className="text-white flex flex-col h-full">
@@ -123,6 +150,46 @@ function InputPanel({
         </div>
       </div>
 
+      {/* Container Stats - only show when container is selected */}
+      {isMultiPallet && (
+        <div className="mb-4 p-3 bg-blue-900/40 rounded-lg border border-blue-700/50">
+          <h2 className="text-sm font-semibold text-blue-300 mb-2">{t('container')}</h2>
+          <div className="grid grid-cols-2 gap-2 text-center mb-3">
+            <div>
+              <p className="text-lg font-bold text-blue-400">{totalPallets} / {maxPallets}</p>
+              <p className="text-xs text-gray-400">{t('totalPallets')}</p>
+            </div>
+            <div>
+              <p className="text-lg font-bold text-cyan-400">{containerUtilization.toFixed(0)}%</p>
+              <p className="text-xs text-gray-400">{t('containerUtilization')}</p>
+            </div>
+          </div>
+
+          {/* Pallet Selector */}
+          {totalPallets > 1 && (
+            <div className="flex items-center justify-between bg-gray-800/50 rounded-lg p-2">
+              <button
+                onClick={handlePrevPallet}
+                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+              >
+                &lt; {t('prev')}
+              </button>
+              <span className="text-sm font-medium text-gray-300">
+                {selectedPallet === null
+                  ? t('allPallets')
+                  : `${t('pallet')} ${selectedPallet + 1}`}
+              </span>
+              <button
+                onClick={handleNextPallet}
+                className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+              >
+                {t('next')} &gt;
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Stats Badges */}
       <div className="mb-4 space-y-2">
         {/* Pallet Badge */}
@@ -130,7 +197,9 @@ function InputPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded bg-green-500" />
-              <span className="text-sm font-semibold text-green-400">{t('pallet')}</span>
+              <span className="text-sm font-semibold text-green-400">
+                {isMultiPallet ? t('totalShipment') : t('pallet')}
+              </span>
             </div>
             <span className="text-sm text-green-300">
               {totalWeight.toFixed(1)} {t('kg')} | {packages.length} {t('totalPackages')}

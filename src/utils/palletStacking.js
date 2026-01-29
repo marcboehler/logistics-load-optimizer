@@ -2,18 +2,79 @@ import { getRandomProducts } from '../data/products'
 import { getCartonById } from '../data/cartonTypes'
 
 // Pallet dimensions in mm
-const PALLET = {
+export const PALLET = {
   length: 1200,
   width: 800,
   height: 144
 }
 
-// Overflow area configuration (next to the pallet)
+// Container configurations
+export const CONTAINER_CONFIG = {
+  '20ft': {
+    length: 5898,
+    width: 2352,
+    maxPallets: 11,
+    // 2 rows of pallets, longitudinal orientation (1200mm along container length)
+    palletsPerRow: 2,
+    palletGap: 50 // 50mm safety gap between pallets
+  },
+  '40ft': {
+    length: 12032,
+    width: 2352,
+    maxPallets: 24,
+    palletsPerRow: 2,
+    palletGap: 50
+  }
+}
+
+// Overflow area configuration (behind the container for ultimate overflow)
 export const OVERFLOW_AREA = {
-  offsetX: 1500, // 1500mm to the right of pallet origin
-  length: 1200,  // Same size as pallet for overflow stacking
+  offsetX: 1500, // Default offset for single pallet mode
+  length: 1200,
   width: 800,
-  floorHeight: 0 // Overflow packages start from floor level
+  floorHeight: 0
+}
+
+/**
+ * Calculate pallet positions within a container
+ * Two rows side-by-side (longitudinal orientation), 50mm gaps
+ * @param {string} containerType - '20ft' or '40ft'
+ * @param {number} palletCount - Number of pallets to position
+ * @returns {Array} Array of pallet positions {x, z, index}
+ */
+export const calculatePalletPositionsInContainer = (containerType, palletCount) => {
+  const config = CONTAINER_CONFIG[containerType]
+  if (!config) return []
+
+  const positions = []
+  const effectivePalletCount = Math.min(palletCount, config.maxPallets)
+
+  // Two rows: Row 0 (left) and Row 1 (right)
+  // Longitudinal orientation: pallet length (1200mm) goes along container length
+  const rowWidth = PALLET.width // 800mm per row
+  const palletSpacing = PALLET.length + config.palletGap // 1200mm + 50mm = 1250mm
+
+  // Center the two rows within container width
+  const totalRowsWidth = rowWidth * 2 + config.palletGap
+  const rowStartZ = (config.width - totalRowsWidth) / 2
+
+  for (let i = 0; i < effectivePalletCount; i++) {
+    const row = i % 2 // Alternate between rows 0 and 1
+    const column = Math.floor(i / 2) // Which position along the length
+
+    const x = column * palletSpacing
+    const z = rowStartZ + row * (rowWidth + config.palletGap)
+
+    positions.push({
+      x,
+      z,
+      index: i,
+      row,
+      column
+    })
+  }
+
+  return positions
 }
 
 // Max weight for color calculation (kg)
@@ -555,8 +616,9 @@ const generateOverflowCandidatePositions = (placedBoxes) => {
 
 /**
  * Main function to fill pallet with random products using advanced packing
+ * Now supports multi-pallet mode when containerType is specified
  */
-export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 700) => {
+export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 700, containerType = 'none') => {
   const maxHeightMm = maxHeightM * 1000
 
   // Get random products
@@ -565,10 +627,211 @@ export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 70
   // Sort by volume and weight (larger/heavier first)
   const sortedProducts = sortProductsForAdvancedPacking(randomProducts)
 
-  // Calculate positions with advanced algorithm
-  const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
+  // If no container selected, use single pallet mode
+  if (containerType === 'none') {
+    const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
+    return {
+      ...result,
+      pallets: [{
+        index: 0,
+        packages: result.packages,
+        weight: result.totalWeight,
+        position: { x: 0, z: 0 }
+      }],
+      totalPallets: 1,
+      maxPallets: 1,
+      containerType: 'none',
+      containerUtilization: 100
+    }
+  }
 
-  return result
+  // Multi-pallet mode for containers
+  return fillContainerWithPallets(sortedProducts, maxHeightMm, maxWeightKg, containerType)
+}
+
+/**
+ * Fill a container with multiple pallets
+ * Distributes packages across pallets until container capacity is reached
+ */
+const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, containerType) => {
+  const config = CONTAINER_CONFIG[containerType]
+  if (!config) {
+    // Fallback to single pallet mode
+    const result = calculateAdvancedPackagePositions(sortedProducts, maxHeightMm, maxWeightKg)
+    return {
+      ...result,
+      pallets: [{ index: 0, packages: result.packages, weight: result.totalWeight, position: { x: 0, z: 0 } }],
+      totalPallets: 1,
+      maxPallets: 1,
+      containerType,
+      containerUtilization: 100
+    }
+  }
+
+  const pallets = []
+  let remainingProducts = [...sortedProducts]
+  let palletIndex = 0
+  let totalPlacedPackages = []
+  let totalWeight = 0
+
+  // Fill pallets one by one until we run out of products or hit max pallets
+  while (remainingProducts.length > 0 && palletIndex < config.maxPallets) {
+    // Calculate packing for this pallet
+    const palletResult = calculateAdvancedPackagePositions(remainingProducts, maxHeightMm, maxWeightKg)
+
+    if (palletResult.packages.length === 0) {
+      // Can't place any more packages on new pallets (all too big/heavy)
+      break
+    }
+
+    // Get pallet position in container
+    const palletPositions = calculatePalletPositionsInContainer(containerType, palletIndex + 1)
+    const palletPos = palletPositions[palletIndex]
+
+    // Offset package positions to pallet location in container
+    const offsetPackages = palletResult.packages.map(pkg => ({
+      ...pkg,
+      palletIndex,
+      position: {
+        x: pkg.position.x + palletPos.x,
+        y: pkg.position.y,
+        z: pkg.position.z + palletPos.z
+      }
+    }))
+
+    pallets.push({
+      index: palletIndex,
+      packages: offsetPackages,
+      weight: palletResult.totalWeight,
+      height: palletResult.maxHeight,
+      volumeUtilization: palletResult.volumeUtilization,
+      position: palletPos
+    })
+
+    totalPlacedPackages = [...totalPlacedPackages, ...offsetPackages]
+    totalWeight += palletResult.totalWeight
+
+    // Remove placed products from remaining
+    const placedIds = new Set(palletResult.packages.map(p => p.id))
+    remainingProducts = remainingProducts.filter(p => !placedIds.has(p.id))
+
+    palletIndex++
+  }
+
+  // Calculate overflow (products that couldn't fit in container)
+  const overflowPackages = remainingProducts.length > 0
+    ? calculateContainerOverflowPositions(remainingProducts, containerType)
+    : []
+
+  // Calculate container utilization
+  const containerUtilization = (pallets.length / config.maxPallets) * 100
+
+  // Calculate max height across all pallets
+  const maxHeight = pallets.length > 0
+    ? Math.max(...pallets.map(p => p.height || 0))
+    : 0
+
+  return {
+    packages: totalPlacedPackages,
+    overflowPackages,
+    pallets,
+    totalWeight,
+    maxHeight,
+    totalPallets: pallets.length,
+    maxPallets: config.maxPallets,
+    containerType,
+    containerUtilization,
+    volumeUtilization: pallets.length > 0
+      ? pallets.reduce((sum, p) => sum + (p.volumeUtilization || 0), 0) / pallets.length
+      : 0,
+    requestedCount: sortedProducts.length,
+    placedCount: totalPlacedPackages.length,
+    overflowCount: overflowPackages.length
+  }
+}
+
+/**
+ * Calculate positions for overflow packages behind the container
+ */
+const calculateContainerOverflowPositions = (overflowProducts, containerType) => {
+  const config = CONTAINER_CONFIG[containerType]
+  const overflowOffsetZ = config ? config.width + 500 : 2500 // Place behind container
+
+  const positionedPackages = []
+  const placedBoxes = []
+
+  for (const product of overflowProducts) {
+    const carton = getCartonById(product.cartonId)
+    if (!carton) continue
+
+    // Simple stacking in overflow area
+    const placement = tryPlaceBoxInOverflowArea(
+      carton.length,
+      carton.width,
+      carton.height,
+      placedBoxes
+    )
+
+    if (placement) {
+      placedBoxes.push(placement)
+
+      positionedPackages.push({
+        ...product,
+        length: carton.length,
+        width: carton.width,
+        height: carton.height,
+        color: OVERFLOW_COLOR,
+        isOverflow: true,
+        overflowReason: 'container_full',
+        position: {
+          x: placement.x + placement.length / 2,
+          y: placement.y + placement.height / 2,
+          z: overflowOffsetZ + placement.z + placement.width / 2
+        },
+        dimensions: {
+          length: placement.length,
+          width: placement.width,
+          height: placement.height
+        }
+      })
+    } else {
+      // Fallback: stack vertically
+      const fallbackY = placedBoxes.length > 0
+        ? Math.max(...placedBoxes.map(b => b.y + b.height))
+        : 0
+
+      placedBoxes.push({
+        x: 0,
+        y: fallbackY,
+        z: 0,
+        length: carton.length,
+        width: carton.width,
+        height: carton.height
+      })
+
+      positionedPackages.push({
+        ...product,
+        length: carton.length,
+        width: carton.width,
+        height: carton.height,
+        color: OVERFLOW_COLOR,
+        isOverflow: true,
+        overflowReason: 'container_full',
+        position: {
+          x: carton.length / 2,
+          y: fallbackY + carton.height / 2,
+          z: overflowOffsetZ + carton.width / 2
+        },
+        dimensions: {
+          length: carton.length,
+          width: carton.width,
+          height: carton.height
+        }
+      })
+    }
+  }
+
+  return positionedPackages
 }
 
 // Calculate total weight

@@ -43,6 +43,12 @@ export const translations = {
     weightUtilization: 'Gewichtsauslastung',
     heightUtilization: 'Höhenauslastung',
     volumeUtilization: 'Volumen-Ausnutzung',
+    totalPallets: 'Paletten',
+    containerUtilization: 'Container-Auslastung',
+    totalShipment: 'Gesamtladung',
+    allPallets: 'Alle Paletten',
+    prev: 'Zurück',
+    next: 'Weiter',
 
     // Package List
     packageList: 'Paketliste',
@@ -103,6 +109,12 @@ export const translations = {
     weightUtilization: 'Weight Utilization',
     heightUtilization: 'Height Utilization',
     volumeUtilization: 'Volume Utilization',
+    totalPallets: 'Pallets',
+    containerUtilization: 'Container Utilization',
+    totalShipment: 'Total Shipment',
+    allPallets: 'All Pallets',
+    prev: 'Prev',
+    next: 'Next',
 
     // Package List
     packageList: 'Package List',
