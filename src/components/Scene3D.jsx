@@ -400,6 +400,12 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
   const centerY = height / 2
   const centerZ = offsetZ + depth / 2
 
+  // Text positioning - three-line block above the box
+  const textBaseY = height + 0.3
+  const largeFontSize = 1.2 // Large number font
+  const smallFontSize = 0.35 // Small label font
+  const lineSpacing = 0.15
+
   return (
     <group>
       {/* Large red placeholder box */}
@@ -414,17 +420,47 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         <lineBasicMaterial color="#990000" linewidth={2} />
       </lineSegments>
 
-      {/* Label above the box */}
+      {/* Three-line text block above the box */}
+      {/* Line 1: "OVERFLOW:" label (top) */}
       <Text
-        position={[centerX, height + 0.5, centerZ]}
-        fontSize={0.4}
-        color="#FF0000"
+        position={[centerX, textBaseY + largeFontSize + smallFontSize + lineSpacing * 2, centerZ]}
+        fontSize={smallFontSize}
+        color="#FFFFFF"
         anchorX="center"
         anchorY="bottom"
         outlineWidth={0.02}
         outlineColor="#000000"
+        font="/fonts/Inter-Bold.woff"
       >
-        {`OVERFLOW: ${overflowCount} Items`}
+        OVERFLOW:
+      </Text>
+
+      {/* Line 2: The big number (middle) */}
+      <Text
+        position={[centerX, textBaseY + smallFontSize + lineSpacing, centerZ]}
+        fontSize={largeFontSize}
+        color="#FFFF00"
+        anchorX="center"
+        anchorY="bottom"
+        outlineWidth={0.04}
+        outlineColor="#000000"
+        font="/fonts/Inter-Bold.woff"
+      >
+        {overflowCount.toLocaleString()}
+      </Text>
+
+      {/* Line 3: "ITEMS" label (bottom) */}
+      <Text
+        position={[centerX, textBaseY, centerZ]}
+        fontSize={smallFontSize}
+        color="#FFFFFF"
+        anchorX="center"
+        anchorY="bottom"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+        font="/fonts/Inter-Bold.woff"
+      >
+        ITEMS
       </Text>
     </group>
   )
