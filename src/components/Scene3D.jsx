@@ -3,28 +3,27 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
-import { OVERFLOW_AREA } from '../utils/palletStacking'
+import { PALLET, CONTAINER_CONFIG } from '../utils/palletStacking'
 
-// Container dimensions in mm
+// Container dimensions in mm (for backwards compatibility)
 const CONTAINER_SIZES = {
   '20ft': { length: 5898, width: 2352 },
   '40ft': { length: 12032, width: 2352 }
 }
 
-// Overflow area visual indicator
-function OverflowAreaIndicator({ scale, hasOverflow }) {
-  if (!hasOverflow) return null
+// Overflow area visual indicator (for container overflow behind container)
+function ContainerOverflowIndicator({ scale, containerType, hasOverflow }) {
+  if (!hasOverflow || containerType === 'none') return null
 
-  const offsetX = OVERFLOW_AREA.offsetX * scale
-  const length = OVERFLOW_AREA.length * scale
-  const width = OVERFLOW_AREA.width * scale
+  const config = CONTAINER_CONFIG[containerType]
+  if (!config) return null
 
-  // Position relative to pallet offset
-  const palletOffsetX = -6
-  const palletOffsetZ = -4
+  const length = 1200 * scale
+  const width = 800 * scale
+  const overflowOffsetZ = (config.width + 500) * scale
 
-  const x1 = palletOffsetX + offsetX
-  const z1 = palletOffsetZ
+  const x1 = 0
+  const z1 = overflowOffsetZ
   const x2 = x1 + length
   const z2 = z1 + width
 
@@ -38,7 +37,6 @@ function OverflowAreaIndicator({ scale, hasOverflow }) {
 
   return (
     <group>
-      {/* Overflow area floor outline - red dashed line */}
       <Line
         points={floorPoints}
         color="#ef4444"
@@ -47,8 +45,6 @@ function OverflowAreaIndicator({ scale, hasOverflow }) {
         dashSize={0.3}
         gapSize={0.15}
       />
-
-      {/* Semi-transparent red floor plane */}
       <mesh
         position={[(x1 + x2) / 2, 0.005, (z1 + z2) / 2]}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -56,8 +52,6 @@ function OverflowAreaIndicator({ scale, hasOverflow }) {
         <planeGeometry args={[length, width]} />
         <meshBasicMaterial color="#ef4444" transparent opacity={0.15} side={2} />
       </mesh>
-
-      {/* Corner markers */}
       {[[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.02, z]}>
           <sphereGeometry args={[0.1, 8, 8]} />
@@ -68,26 +62,18 @@ function OverflowAreaIndicator({ scale, hasOverflow }) {
   )
 }
 
-// Container footprint visualization
-function ContainerFootprint({ containerType, scale }) {
-  if (containerType === 'none' || !CONTAINER_SIZES[containerType]) {
-    return null
-  }
+// Single pallet overflow indicator (original behavior)
+function SinglePalletOverflowIndicator({ scale, hasOverflow }) {
+  if (!hasOverflow) return null
 
-  const { length, width } = CONTAINER_SIZES[containerType]
-  const scaledLength = length * scale
-  const scaledWidth = width * scale
+  const offsetX = 1500 * scale
+  const length = 1200 * scale
+  const width = 800 * scale
 
-  // Position container so pallet is at one end
-  // Pallet is centered at origin, so container starts at pallet position
-  const offsetX = -6 // Pallet center X offset
-  const offsetZ = -4 // Pallet center Z offset
-
-  // Container corners (pallet at the front-left corner of container)
-  const x1 = offsetX - 6 // Start slightly before pallet
-  const z1 = offsetZ - 4
-  const x2 = x1 + scaledLength
-  const z2 = z1 + scaledWidth
+  const x1 = offsetX
+  const z1 = 0
+  const x2 = x1 + length
+  const z2 = z1 + width
 
   const floorPoints = [
     [x1, 0.01, z1],
@@ -99,45 +85,122 @@ function ContainerFootprint({ containerType, scale }) {
 
   return (
     <group>
-      {/* Container floor outline - dashed line */}
       <Line
         points={floorPoints}
-        color="#3b82f6"
+        color="#ef4444"
         lineWidth={3}
         dashed
-        dashSize={0.5}
-        gapSize={0.25}
+        dashSize={0.3}
+        gapSize={0.15}
       />
-
-      {/* Semi-transparent floor plane */}
       <mesh
         position={[(x1 + x2) / 2, 0.005, (z1 + z2) / 2]}
         rotation={[-Math.PI / 2, 0, 0]}
       >
-        <planeGeometry args={[scaledLength, scaledWidth]} />
-        <meshBasicMaterial color="#3b82f6" transparent opacity={0.08} side={2} />
+        <planeGeometry args={[length, width]} />
+        <meshBasicMaterial color="#ef4444" transparent opacity={0.15} side={2} />
       </mesh>
-
-      {/* Container dimension labels using corner markers */}
       {[[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.02, z]}>
-          <sphereGeometry args={[0.15, 8, 8]} />
-          <meshBasicMaterial color="#3b82f6" />
+          <sphereGeometry args={[0.1, 8, 8]} />
+          <meshBasicMaterial color="#ef4444" />
         </mesh>
       ))}
     </group>
   )
 }
 
-// Height limit indicator plane
-function HeightLimitIndicator({ maxHeightM, scale }) {
-  const palletHeight = 144 * scale
-  const limitHeight = palletHeight + (maxHeightM * 1000 * scale)
+// Container footprint visualization - enhanced for multi-pallet
+function ContainerFootprint({ containerType, scale, pallets = [] }) {
+  if (containerType === 'none' || !CONTAINER_SIZES[containerType]) {
+    return null
+  }
 
-  const palletLength = 1200 * scale
-  const palletWidth = 800 * scale
-  const offsetX = -palletLength / 2
-  const offsetZ = -palletWidth / 2
+  const { length, width } = CONTAINER_SIZES[containerType]
+  const scaledLength = length * scale
+  const scaledWidth = width * scale
+
+  // Container starts at origin
+  const x1 = 0
+  const z1 = 0
+  const x2 = scaledLength
+  const z2 = scaledWidth
+
+  const floorPoints = [
+    [x1, 0.01, z1],
+    [x2, 0.01, z1],
+    [x2, 0.01, z2],
+    [x1, 0.01, z2],
+    [x1, 0.01, z1]
+  ]
+
+  // Wall height visualization
+  const wallHeight = 2.5 // 2.5m container internal height
+
+  return (
+    <group>
+      {/* Container floor outline - solid prominent line */}
+      <Line
+        points={floorPoints}
+        color="#3b82f6"
+        lineWidth={4}
+      />
+
+      {/* Semi-transparent floor plane */}
+      <mesh
+        position={[(x1 + x2) / 2, 0.002, (z1 + z2) / 2]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
+        <planeGeometry args={[scaledLength, scaledWidth]} />
+        <meshBasicMaterial color="#3b82f6" transparent opacity={0.05} side={2} />
+      </mesh>
+
+      {/* Container wall outlines (vertical edges) */}
+      {[[x1, z1], [x2, z1], [x2, z2], [x1, z2]].map(([x, z], i) => (
+        <group key={i}>
+          <Line
+            points={[[x, 0, z], [x, wallHeight, z]]}
+            color="#3b82f6"
+            lineWidth={2}
+            dashed
+            dashSize={0.3}
+            gapSize={0.15}
+          />
+          <mesh position={[x, 0.02, z]}>
+            <sphereGeometry args={[0.12, 8, 8]} />
+            <meshBasicMaterial color="#3b82f6" />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Top frame of container */}
+      <Line
+        points={[
+          [x1, wallHeight, z1],
+          [x2, wallHeight, z1],
+          [x2, wallHeight, z2],
+          [x1, wallHeight, z2],
+          [x1, wallHeight, z1]
+        ]}
+        color="#3b82f6"
+        lineWidth={2}
+        dashed
+        dashSize={0.3}
+        gapSize={0.15}
+      />
+    </group>
+  )
+}
+
+// Height limit indicator plane - updated for pallet position
+function HeightLimitIndicator({ maxHeightM, scale, palletPosition = { x: 0, z: 0 } }) {
+  const palletHeightScaled = PALLET.height * scale
+  const limitHeight = palletHeightScaled + (maxHeightM * 1000 * scale)
+
+  const palletLength = PALLET.length * scale
+  const palletWidth = PALLET.width * scale
+  const offsetX = palletPosition.x * scale
+  const offsetZ = palletPosition.z * scale
 
   const points = [
     [offsetX, limitHeight, offsetZ],
@@ -157,48 +220,80 @@ function HeightLimitIndicator({ maxHeightM, scale }) {
         dashSize={0.3}
         gapSize={0.15}
       />
-
-      <mesh position={[0, limitHeight, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh
+        position={[offsetX + palletLength / 2, limitHeight, offsetZ + palletWidth / 2]}
+        rotation={[-Math.PI / 2, 0, 0]}
+      >
         <planeGeometry args={[palletLength, palletWidth]} />
-        <meshBasicMaterial color="#ef4444" transparent opacity={0.1} side={2} />
+        <meshBasicMaterial color="#ef4444" transparent opacity={0.08} side={2} />
       </mesh>
-
-      {[[offsetX, offsetZ], [offsetX + palletLength, offsetZ], [offsetX + palletLength, offsetZ + palletWidth], [offsetX, offsetZ + palletWidth]].map(([x, z], i) => (
-        <Line
-          key={i}
-          points={[[x, palletHeight, z], [x, limitHeight, z]]}
-          color="#ef4444"
-          lineWidth={1}
-          dashed
-          dashSize={0.2}
-          gapSize={0.1}
-        />
-      ))}
     </group>
   )
 }
 
-function Scene3D({ packages, overflowPackages = [], maxHeightLimit = 2.3, containerType = 'none' }) {
+// Pallet with position offset
+function PositionedPallet({ scale, position, index, isSelected }) {
+  const x = position.x * scale
+  const z = position.z * scale
+
+  return (
+    <group position={[x, 0, z]}>
+      <Pallet scale={scale} />
+      {/* Pallet index label indicator */}
+      <mesh position={[PALLET.length * scale / 2, 0.02, PALLET.width * scale / 2]}>
+        <circleGeometry args={[0.3, 16]} />
+        <meshBasicMaterial
+          color={isSelected ? '#22c55e' : '#6b7280'}
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+    </group>
+  )
+}
+
+function Scene3D({
+  packages,
+  overflowPackages = [],
+  pallets = [],
+  maxHeightLimit = 2.3,
+  containerType = 'none',
+  selectedPallet = null
+}) {
   const scale = 0.01
+  const isMultiPallet = containerType !== 'none' && pallets.length > 0
 
-  const palletOffsetX = -6
-  const palletOffsetZ = -4
-
-  // Pallet dimensions for default target calculation
-  const palletLength = 1200 * scale
-  const palletWidth = 800 * scale
-  const palletHeight = 144 * scale
-
-  // Calculate dynamic camera target based on actual stack geometry (including overflow)
+  // Calculate dynamic camera target based on scene content
   const cameraTarget = useMemo(() => {
+    // Multi-pallet container mode
+    if (isMultiPallet) {
+      const config = CONTAINER_CONFIG[containerType]
+      if (config) {
+        // If a specific pallet is selected, focus on it
+        if (selectedPallet !== null && pallets[selectedPallet]) {
+          const pallet = pallets[selectedPallet]
+          const x = (pallet.position.x + PALLET.length / 2) * scale
+          const y = (PALLET.height + maxHeightLimit * 500) * scale
+          const z = (pallet.position.z + PALLET.width / 2) * scale
+          return [x, y, z]
+        }
+
+        // Otherwise, center on the container
+        const centerX = (config.length / 2) * scale
+        const centerY = 1.5 // Mid-height
+        const centerZ = (config.width / 2) * scale
+        return [centerX, centerY, centerZ]
+      }
+    }
+
+    // Single pallet mode
     const allPackages = [...packages, ...overflowPackages]
 
     if (allPackages.length === 0) {
-      // Default: center on pallet surface
-      return [0, palletHeight + 0.5, 0]
+      return [PALLET.length * scale / 2, PALLET.height * scale + 0.5, PALLET.width * scale / 2]
     }
 
-    // Calculate bounding box of all packages (pallet + overflow)
+    // Calculate bounding box of all packages
     let minX = Infinity, maxX = -Infinity
     let minY = Infinity, maxY = -Infinity
     let minZ = Infinity, maxZ = -Infinity
@@ -207,14 +302,12 @@ function Scene3D({ packages, overflowPackages = [], maxHeightLimit = 2.3, contai
       const pos = pkg.position
       const dim = pkg.dimensions
 
-      // Convert to scene coordinates (scaled and offset)
-      // Note: overflow packages already have offsetX included in their position
-      const pkgMinX = (pos.x - dim.length / 2) * scale + palletOffsetX
-      const pkgMaxX = (pos.x + dim.length / 2) * scale + palletOffsetX
-      const pkgMinY = pos.y * scale - (dim.height / 2) * scale
-      const pkgMaxY = pos.y * scale + (dim.height / 2) * scale
-      const pkgMinZ = (pos.z - dim.width / 2) * scale + palletOffsetZ
-      const pkgMaxZ = (pos.z + dim.width / 2) * scale + palletOffsetZ
+      const pkgMinX = (pos.x - dim.length / 2) * scale
+      const pkgMaxX = (pos.x + dim.length / 2) * scale
+      const pkgMinY = (pos.y - dim.height / 2) * scale
+      const pkgMaxY = (pos.y + dim.height / 2) * scale
+      const pkgMinZ = (pos.z - dim.width / 2) * scale
+      const pkgMaxZ = (pos.z + dim.width / 2) * scale
 
       minX = Math.min(minX, pkgMinX)
       maxX = Math.max(maxX, pkgMaxX)
@@ -224,75 +317,121 @@ function Scene3D({ packages, overflowPackages = [], maxHeightLimit = 2.3, contai
       maxZ = Math.max(maxZ, pkgMaxZ)
     }
 
-    // Geometric center of all packages
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
-    const centerZ = (minZ + maxZ) / 2
+    return [(minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2]
+  }, [packages, overflowPackages, pallets, containerType, selectedPallet, isMultiPallet, scale, maxHeightLimit])
 
-    return [centerX, centerY, centerZ]
-  }, [packages, overflowPackages, scale, palletOffsetX, palletOffsetZ, palletHeight])
+  // Calculate camera distance based on scene size
+  const cameraDistance = useMemo(() => {
+    if (isMultiPallet) {
+      const config = CONTAINER_CONFIG[containerType]
+      if (config) {
+        // Base distance on container size
+        const containerDiagonal = Math.sqrt(
+          Math.pow(config.length * scale, 2) + Math.pow(config.width * scale, 2)
+        )
+        return Math.max(containerDiagonal * 1.2, 30)
+      }
+    }
+    // Single pallet mode
+    const hasOverflow = overflowPackages.length > 0
+    return hasOverflow ? 30 : 20
+  }, [containerType, isMultiPallet, overflowPackages.length, scale])
 
-  // Adjust camera position based on container size and overflow
   const hasOverflow = overflowPackages.length > 0
-  const baseDistance = containerType === '40ft' ? 35 : containerType === '20ft' ? 25 : 20
-  const cameraDistance = hasOverflow ? baseDistance + 10 : baseDistance
 
   return (
     <Canvas
-      camera={{ position: [cameraDistance, 15, cameraDistance], fov: 50 }}
+      camera={{ position: [cameraDistance, cameraDistance * 0.5, cameraDistance], fov: 50 }}
       className="w-full h-full"
     >
       {/* Lighting */}
       <ambientLight intensity={0.4} />
       <directionalLight
-        position={[15, 25, 15]}
+        position={[30, 40, 30]}
         intensity={1.2}
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
       />
-      <pointLight position={[-10, 15, -10]} intensity={0.3} />
+      <pointLight position={[-20, 20, -20]} intensity={0.3} />
       <hemisphereLight intensity={0.3} />
 
       {/* Environment */}
       <Environment preset="warehouse" />
 
-      {/* Floor Grid */}
+      {/* Floor Grid - larger for containers */}
       <Grid
         position={[0, -0.01, 0]}
-        args={[60, 60]}
+        args={[120, 120]}
         cellSize={1}
         cellThickness={0.5}
         cellColor="#404040"
         sectionSize={5}
         sectionThickness={1}
         sectionColor="#606060"
-        fadeDistance={80}
+        fadeDistance={100}
         fadeStrength={1}
       />
 
       {/* Container footprint */}
-      <ContainerFootprint containerType={containerType} scale={scale} />
+      <ContainerFootprint containerType={containerType} scale={scale} pallets={pallets} />
 
-      {/* Euro Pallet: 1200x800x144mm */}
-      <Pallet scale={scale} />
+      {/* Render pallets and packages */}
+      {isMultiPallet ? (
+        // Multi-pallet mode: render each pallet at its position
+        <>
+          {pallets.map((pallet) => (
+            <group key={`pallet-group-${pallet.index}`}>
+              <PositionedPallet
+                scale={scale}
+                position={pallet.position}
+                index={pallet.index}
+                isSelected={selectedPallet === pallet.index}
+              />
+              <HeightLimitIndicator
+                maxHeightM={maxHeightLimit}
+                scale={scale}
+                palletPosition={pallet.position}
+              />
+            </group>
+          ))}
 
-      {/* Height limit indicator */}
-      <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
+          {/* Packages are already positioned with pallet offsets */}
+          {packages.map((pkg) => (
+            <StackedPackage
+              key={pkg.id}
+              pkg={pkg}
+              scale={scale}
+              palletOffsetX={0}
+              palletOffsetZ={0}
+            />
+          ))}
 
-      {/* Overflow area indicator (red zone) */}
-      <OverflowAreaIndicator scale={scale} hasOverflow={hasOverflow} />
+          {/* Container overflow indicator */}
+          <ContainerOverflowIndicator
+            scale={scale}
+            containerType={containerType}
+            hasOverflow={hasOverflow}
+          />
+        </>
+      ) : (
+        // Single pallet mode
+        <>
+          <Pallet scale={scale} position={[0, 0, 0]} />
+          <HeightLimitIndicator maxHeightM={maxHeightLimit} scale={scale} />
+          <SinglePalletOverflowIndicator scale={scale} hasOverflow={hasOverflow} />
 
-      {/* Packages on pallet (green heatmap) */}
-      {packages.map((pkg) => (
-        <StackedPackage
-          key={pkg.id}
-          pkg={pkg}
-          scale={scale}
-          palletOffsetX={palletOffsetX}
-          palletOffsetZ={palletOffsetZ}
-        />
-      ))}
+          {packages.map((pkg) => (
+            <StackedPackage
+              key={pkg.id}
+              pkg={pkg}
+              scale={scale}
+              palletOffsetX={0}
+              palletOffsetZ={0}
+            />
+          ))}
+        </>
+      )}
 
       {/* Overflow packages (red stack) */}
       {overflowPackages.map((pkg) => (
@@ -300,18 +439,19 @@ function Scene3D({ packages, overflowPackages = [], maxHeightLimit = 2.3, contai
           key={`overflow-${pkg.id}`}
           pkg={pkg}
           scale={scale}
-          palletOffsetX={palletOffsetX}
-          palletOffsetZ={palletOffsetZ}
+          palletOffsetX={0}
+          palletOffsetZ={0}
         />
       ))}
 
-      {/* Camera Controls - dynamic target based on stack geometry */}
+      {/* Camera Controls */}
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
         minDistance={5}
-        maxDistance={100}
+        maxDistance={150}
+        maxPolarAngle={Math.PI / 2 - 0.1} // Prevent camera going below floor
         target={cameraTarget}
       />
     </Canvas>
