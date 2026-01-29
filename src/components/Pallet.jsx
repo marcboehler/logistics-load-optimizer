@@ -14,8 +14,6 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
-  const isTransparent = opacity < 1.0
-
   return (
     <group position={[offsetX, palletHeight / 2, offsetZ]}>
       {/* Haupt-Palette als vereinfachter Würfel */}
@@ -24,7 +22,7 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
         <meshStandardMaterial
           color={palletColor}
           roughness={0.8}
-          transparent={isTransparent}
+          transparent={true}
           opacity={opacity}
         />
       </mesh>
@@ -32,7 +30,7 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
       {/* Kanten-Markierung für bessere Sichtbarkeit */}
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(palletWidth, palletHeight, palletDepth)]} />
-        <lineBasicMaterial color={darkWood} />
+        <lineBasicMaterial color={darkWood} transparent={true} opacity={opacity} />
       </lineSegments>
     </group>
   )
