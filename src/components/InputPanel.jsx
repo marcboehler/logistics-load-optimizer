@@ -292,29 +292,6 @@ function InputPanel({
         </div>
       </div>
 
-      {/* Heatmap Legend */}
-      <div className="mb-4 p-3 bg-gray-700/50 rounded-lg">
-        <h2 className="text-sm font-semibold text-gray-300 mb-2">{t('legend')}</h2>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-400">{t('light')}</span>
-          <div
-            className="flex-1 h-4 rounded"
-            style={{
-              background: 'linear-gradient(to right, rgb(224, 255, 240), rgb(144, 238, 144), rgb(60, 179, 113), rgb(34, 139, 34), rgb(0, 100, 0))'
-            }}
-          />
-          <span className="text-xs text-gray-400">{t('heavy')}</span>
-        </div>
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>0 {t('kg')}</span>
-          <span>20 {t('kg')}</span>
-        </div>
-        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-600">
-          <div className="w-4 h-4 rounded" style={{ backgroundColor: '#FF0000' }} />
-          <span className="text-xs text-gray-400">{t('overflow')}</span>
-        </div>
-      </div>
-
       {/* Package List - Scrollable */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         <h2 className="text-sm font-semibold text-gray-300 mb-2 flex-shrink-0">

@@ -23,6 +23,30 @@ function LoadingOverlay({ isVisible }) {
   )
 }
 
+// Floating weight legend overlay component
+function WeightLegend() {
+  const { t } = useLanguage()
+
+  return (
+    <div className="absolute top-4 right-4 z-50 bg-slate-800/90 p-3 rounded-lg shadow-lg backdrop-blur-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-400">{t('light')}</span>
+        <div
+          className="w-32 h-3 rounded"
+          style={{
+            background: 'linear-gradient(to right, rgb(224, 255, 240), rgb(144, 238, 144), rgb(60, 179, 113), rgb(34, 139, 34), rgb(0, 100, 0))'
+          }}
+        />
+        <span className="text-xs text-gray-400">{t('heavy')}</span>
+      </div>
+      <div className="flex justify-between text-xs text-gray-500 mt-1 px-6">
+        <span>0 {t('kg')}</span>
+        <span>20 {t('kg')}</span>
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const [packages, setPackages] = useState([])
   const [overflowPackages, setOverflowPackages] = useState([])
@@ -144,7 +168,7 @@ function AppContent() {
         </div>
 
         {/* Rechte Seite: 3D-Visualisierung */}
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <Scene3D
             packages={packages}
             overflowPackages={overflowPackages}
@@ -153,6 +177,8 @@ function AppContent() {
             containerType={containerType}
             selectedPallet={selectedPallet}
           />
+          {/* Floating weight legend overlay */}
+          <WeightLegend />
         </div>
       </div>
     </div>
