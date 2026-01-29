@@ -2,59 +2,53 @@ import * as THREE from 'three'
 
 function Pallet({ scale = 0.01, opacity = 1.0 }) {
   // Europalette Maße in mm: 1200 x 800 x 144
-  const palletWidth = 1200 * scale   // X-Achse (length)
-  const palletDepth = 800 * scale    // Z-Achse (width)
-  const palletHeight = 144 * scale   // Y-Achse
+  const palletWidth = 1200 * scale
+  const palletDepth = 800 * scale
+  const palletHeight = 144 * scale
 
-  const palletColor = '#8B7355'  // Holzfarbe
-  const darkWood = '#6B5344'     // Dunklere Holzfarbe für Kontrast
-  const ghostColor = '#a0a0a0'  // Neutral grey for ghost mode
+  const palletColor = '#8B7355'
+  const darkWood = '#6B5344'
 
-  // Position pallet so its corner is at origin (0, 0, 0)
-  // Box geometry is centered, so offset by half dimensions
+  // Position pallet so its corner is at origin
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
-  // Ghost mode: use unlit flat material for unfocused items
-  const isGhost = opacity < 1.0
-  const ghostOpacity = 0.08 // Slightly visible flat shape
+  // Determine if this is a ghost (unfocused) pallet
+  const isFocused = opacity >= 1.0
 
-  return (
-    <group position={[offsetX, palletHeight / 2, offsetZ]}>
-      {/* Haupt-Palette - key forces re-render when switching materials */}
-      <mesh key={isGhost ? 'ghost' : 'solid'} castShadow={!isGhost} receiveShadow={!isGhost}>
-        <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
-        {isGhost ? (
-          // Unlit flat material for background pallets (no shading noise)
+  // NUCLEAR FIX: Completely separate rendering paths
+  if (isFocused) {
+    // === FOCUSED RENDERING: Full quality with lighting ===
+    return (
+      <group position={[offsetX, palletHeight / 2, offsetZ]}>
+        <mesh key="focused-pallet" castShadow receiveShadow>
+          <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
+          <meshStandardMaterial color={palletColor} roughness={0.8} />
+        </mesh>
+        {/* High-quality edges for focused pallets */}
+        <lineSegments>
+          <edgesGeometry args={[new THREE.BoxGeometry(palletWidth, palletHeight, palletDepth)]} />
+          <lineBasicMaterial color={darkWood} />
+        </lineSegments>
+      </group>
+    )
+  } else {
+    // === GHOST RENDERING: Flat unlit, no edges, minimal ===
+    return (
+      <group position={[offsetX, palletHeight / 2, offsetZ]}>
+        <mesh key="ghost-pallet">
+          <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
           <meshBasicMaterial
-            color={ghostColor}
+            color="#808080"
             transparent={true}
-            opacity={ghostOpacity}
+            opacity={0.05}
             depthWrite={false}
           />
-        ) : (
-          // Full lit material for focused pallets
-          <meshStandardMaterial
-            color={palletColor}
-            roughness={0.8}
-            transparent={true}
-            opacity={opacity}
-          />
-        )}
-      </mesh>
-
-      {/* Kanten-Markierung für bessere Sichtbarkeit */}
-      <lineSegments>
-        <edgesGeometry args={[new THREE.BoxGeometry(palletWidth, palletHeight, palletDepth)]} />
-        <lineBasicMaterial
-          color={isGhost ? '#808080' : darkWood}
-          transparent={true}
-          opacity={isGhost ? ghostOpacity : 1.0}
-          depthWrite={false}
-        />
-      </lineSegments>
-    </group>
-  )
+        </mesh>
+        {/* NO edges for ghost pallets - keeps it clean */}
+      </group>
+    )
+  }
 }
 
 export default Pallet

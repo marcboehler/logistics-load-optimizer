@@ -391,102 +391,93 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
     offsetX = (PALLET.length + 300) * scale
   }
 
-  // Placeholder dimensions - MASSIVE height to represent huge overflow pile
+  // Placeholder dimensions
   const width = PALLET.length * scale
   const depth = PALLET.width * scale
-  const height = Math.max(maxHeightM * 6, 2.0) // 6x max stack height for dramatic effect
+  const height = Math.max(maxHeightM * 6, 2.0)
 
   const centerX = offsetX + width / 2
   const centerY = height / 2
   const centerZ = offsetZ + depth / 2
 
-  // Text positioning - block-justified dark red design
+  // Text positioning
   const textBaseY = height + 0.25
-  const largeFontSize = 2.5 // HUGE number font - dominates the view
-  const smallFontSize = 0.7 // Top label font size
-  const itemsFontSize = 1.4 // Bottom label - sized to match OVERFLOW: width
+  const largeFontSize = 2.5
+  const smallFontSize = 0.7
+  const itemsFontSize = 1.4
 
-  // Safety check for valid count
   const displayCount = typeof overflowCount === 'number' && !isNaN(overflowCount)
     ? overflowCount.toLocaleString()
     : '0'
 
-  // Ghost mode: use flat unlit appearance for unfocused items
-  const isGhost = opacity < 1.0
-  const ghostOpacity = 0.08 // Consistent with other ghost items
+  // Determine if this is focused or ghost
+  const isFocused = opacity >= 1.0
 
-  // Calculate effective opacity
-  const boxOpacity = isGhost ? ghostOpacity : 0.85
-  const textOpacity = isGhost ? ghostOpacity : 1.0
-  const ghostColor = '#a0a0a0' // Neutral grey for ghost mode
-
-  return (
-    <group>
-      {/* Large placeholder box - key forces re-render when switching materials */}
-      <mesh key={isGhost ? 'ghost' : 'solid'} position={[centerX, centerY, centerZ]}>
-        <boxGeometry args={[width, height, depth]} />
-        <meshBasicMaterial
-          color={isGhost ? ghostColor : '#FF0000'}
-          transparent
-          opacity={boxOpacity}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Edge lines for visibility */}
-      <lineSegments position={[centerX, centerY, centerZ]}>
-        <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial
-          color={isGhost ? '#808080' : '#990000'}
-          transparent
-          opacity={isGhost ? ghostOpacity : 1.0}
-          depthWrite={false}
-        />
-      </lineSegments>
-
-      {/* Three-line text block - block-justified dark red design */}
-      {/* Line 1: "OVERFLOW:" label (top) */}
-      <Text
-        position={[centerX, textBaseY + largeFontSize + itemsFontSize + 0.2, centerZ]}
-        fontSize={smallFontSize}
-        color="#991B1B"
-        anchorX="center"
-        anchorY="bottom"
-        outlineWidth={0}
-        fillOpacity={textOpacity}
-      >
-        OVERFLOW:
-      </Text>
-
-      {/* Line 2: The big number (middle) - BOLD */}
-      <Text
-        position={[centerX, textBaseY + itemsFontSize + 0.05, centerZ]}
-        fontSize={largeFontSize}
-        color="#991B1B"
-        anchorX="center"
-        anchorY="bottom"
-        fontWeight="bold"
-        outlineWidth={0}
-        fillOpacity={textOpacity}
-      >
-        {displayCount}
-      </Text>
-
-      {/* Line 3: "ITEMS" label (bottom) - block-aligned with letterSpacing */}
-      <Text
-        position={[centerX, textBaseY, centerZ]}
-        fontSize={itemsFontSize}
-        color="#991B1B"
-        anchorX="center"
-        anchorY="bottom"
-        letterSpacing={0.05}
-        outlineWidth={0}
-        fillOpacity={textOpacity}
-      >
-        ITEMS
-      </Text>
-    </group>
-  )
+  // NUCLEAR FIX: Completely separate rendering paths
+  if (isFocused) {
+    // === FOCUSED RENDERING: Full quality with text and edges ===
+    return (
+      <group>
+        <mesh key="focused-overflow" position={[centerX, centerY, centerZ]}>
+          <boxGeometry args={[width, height, depth]} />
+          <meshBasicMaterial color="#FF0000" transparent opacity={0.85} depthWrite={false} />
+        </mesh>
+        <lineSegments position={[centerX, centerY, centerZ]}>
+          <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
+          <lineBasicMaterial color="#990000" />
+        </lineSegments>
+        {/* Text labels - only for focused */}
+        <Text
+          position={[centerX, textBaseY + largeFontSize + itemsFontSize + 0.2, centerZ]}
+          fontSize={smallFontSize}
+          color="#991B1B"
+          anchorX="center"
+          anchorY="bottom"
+          outlineWidth={0}
+        >
+          OVERFLOW:
+        </Text>
+        <Text
+          position={[centerX, textBaseY + itemsFontSize + 0.05, centerZ]}
+          fontSize={largeFontSize}
+          color="#991B1B"
+          anchorX="center"
+          anchorY="bottom"
+          fontWeight="bold"
+          outlineWidth={0}
+        >
+          {displayCount}
+        </Text>
+        <Text
+          position={[centerX, textBaseY, centerZ]}
+          fontSize={itemsFontSize}
+          color="#991B1B"
+          anchorX="center"
+          anchorY="bottom"
+          letterSpacing={0.05}
+          outlineWidth={0}
+        >
+          ITEMS
+        </Text>
+      </group>
+    )
+  } else {
+    // === GHOST RENDERING: Flat unlit, no text, no edges ===
+    return (
+      <group>
+        <mesh key="ghost-overflow" position={[centerX, centerY, centerZ]}>
+          <boxGeometry args={[width, height, depth]} />
+          <meshBasicMaterial
+            color="#808080"
+            transparent={true}
+            opacity={0.05}
+            depthWrite={false}
+          />
+        </mesh>
+        {/* NO edges, NO text for ghost overflow */}
+      </group>
+    )
+  }
 }
 
 function Scene3D({
