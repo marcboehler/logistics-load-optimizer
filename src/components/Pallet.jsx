@@ -13,10 +13,14 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
-  // DIAGNOSTIC: FORCE GHOST MODE FOR ALL PALLETS
-  const isActuallyGhost = true // KILL SWITCH - forces ghost for everyone
+  // Determine if this is a ghost (unfocused) item
+  // opacity < 1.0 means it's in ghost mode
+  const isFocused = opacity >= 1.0
 
-  if (!isActuallyGhost) {
+  // VERY LOW opacity to minimize alpha stacking effect
+  const ghostOpacity = 0.02
+
+  if (isFocused) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
@@ -31,15 +35,15 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
       </group>
     )
   } else {
-    // === DIAGNOSTIC GHOST: MAGENTA TO PROVE THIS PATH WORKS ===
+    // === GHOST RENDERING: Flat unlit, very low opacity ===
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
-        <mesh key="diagnostic-ghost-pallet">
+        <mesh key="ghost-pallet">
           <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
           <meshBasicMaterial
-            color="#ff00ff"
+            color="#808080"
             transparent={true}
-            opacity={0.5}
+            opacity={ghostOpacity}
             depthWrite={false}
           />
         </mesh>

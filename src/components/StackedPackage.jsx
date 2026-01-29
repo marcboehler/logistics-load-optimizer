@@ -11,11 +11,14 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
   const boxHeight = pkg.dimensions.height * scale
   const boxDepth = pkg.dimensions.width * scale
 
-  // DIAGNOSTIC: FORCE GHOST MODE FOR ALL ITEMS
-  // This tests if the ghost rendering path works at all
-  const isActuallyGhost = true // KILL SWITCH - forces ghost for everyone
+  // Determine if this is a ghost (unfocused) item
+  // opacity < 1.0 means it's in ghost mode
+  const isFocused = opacity >= 1.0
 
-  if (!isActuallyGhost) {
+  // VERY LOW opacity to minimize alpha stacking effect
+  const ghostOpacity = 0.02
+
+  if (isFocused) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[posX, posY, posZ]}>
@@ -40,15 +43,15 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
       </group>
     )
   } else {
-    // === DIAGNOSTIC GHOST: MAGENTA TO PROVE THIS PATH WORKS ===
+    // === GHOST RENDERING: Flat unlit, very low opacity ===
     return (
       <group position={[posX, posY, posZ]}>
-        <mesh key="diagnostic-ghost-pkg">
+        <mesh key="ghost-pkg">
           <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
           <meshBasicMaterial
-            color="#ff00ff"
+            color="#808080"
             transparent={true}
-            opacity={0.5}
+            opacity={ghostOpacity}
             depthWrite={false}
           />
         </mesh>
