@@ -400,11 +400,11 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
   const centerY = height / 2
   const centerZ = offsetZ + depth / 2
 
-  // Text positioning - dark red block design above the box
-  const textBaseY = height + 0.3
+  // Text positioning - block-justified dark red design
+  const textBaseY = height + 0.25
   const largeFontSize = 2.5 // HUGE number font - dominates the view
   const smallFontSize = 0.7 // Top label font size
-  const itemsFontSize = 1.1 // Bottom label - larger to align flush with top
+  const itemsFontSize = 1.4 // Bottom label - sized to match OVERFLOW: width
 
   // Safety check for valid count
   const displayCount = typeof overflowCount === 'number' && !isNaN(overflowCount)
@@ -425,12 +425,12 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         <lineBasicMaterial color="#990000" />
       </lineSegments>
 
-      {/* Three-line text block above the box - dark red block design */}
+      {/* Three-line text block - block-justified dark red design */}
       {/* Line 1: "OVERFLOW:" label (top) */}
       <Text
-        position={[centerX, textBaseY + largeFontSize + itemsFontSize + 0.4, centerZ]}
+        position={[centerX, textBaseY + largeFontSize + itemsFontSize + 0.2, centerZ]}
         fontSize={smallFontSize}
-        color="#4A0404"
+        color="#991B1B"
         anchorX="center"
         anchorY="bottom"
         outlineWidth={0}
@@ -440,9 +440,9 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
 
       {/* Line 2: The big number (middle) - BOLD */}
       <Text
-        position={[centerX, textBaseY + itemsFontSize + 0.15, centerZ]}
+        position={[centerX, textBaseY + itemsFontSize + 0.05, centerZ]}
         fontSize={largeFontSize}
-        color="#4A0404"
+        color="#991B1B"
         anchorX="center"
         anchorY="bottom"
         fontWeight="bold"
@@ -451,13 +451,14 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }
         {displayCount}
       </Text>
 
-      {/* Line 3: "ITEMS" label (bottom) - larger, tighter spacing */}
+      {/* Line 3: "ITEMS" label (bottom) - block-aligned with letterSpacing */}
       <Text
         position={[centerX, textBaseY, centerZ]}
         fontSize={itemsFontSize}
-        color="#4A0404"
+        color="#991B1B"
         anchorX="center"
         anchorY="bottom"
+        letterSpacing={0.05}
         outlineWidth={0}
       >
         ITEMS
