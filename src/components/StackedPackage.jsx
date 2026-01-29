@@ -11,11 +11,11 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
   const boxHeight = pkg.dimensions.height * scale
   const boxDepth = pkg.dimensions.width * scale
 
-  // Determine if this is a ghost (unfocused) item
-  const isFocused = opacity >= 1.0
+  // DIAGNOSTIC: FORCE GHOST MODE FOR ALL ITEMS
+  // This tests if the ghost rendering path works at all
+  const isActuallyGhost = true // KILL SWITCH - forces ghost for everyone
 
-  // NUCLEAR FIX: Completely separate rendering paths
-  if (isFocused) {
+  if (!isActuallyGhost) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[posX, posY, posZ]}>
@@ -27,12 +27,10 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
             metalness={0.1}
           />
         </mesh>
-        {/* High-quality edges for focused items */}
         <lineSegments>
           <edgesGeometry args={[new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth)]} />
           <lineBasicMaterial color="#000000" opacity={0.4} transparent />
         </lineSegments>
-        {/* Weight indicator for heavy items */}
         {pkg.weight >= 10 && (
           <mesh position={[0, boxHeight / 2 + 0.05, 0]}>
             <sphereGeometry args={[0.1, 8, 8]} />
@@ -42,19 +40,18 @@ function StackedPackage({ pkg, scale, palletOffsetX, palletOffsetZ, opacity = 1.
       </group>
     )
   } else {
-    // === GHOST RENDERING: Flat unlit, no edges, minimal ===
+    // === DIAGNOSTIC GHOST: MAGENTA TO PROVE THIS PATH WORKS ===
     return (
       <group position={[posX, posY, posZ]}>
-        <mesh key="ghost-pkg">
+        <mesh key="diagnostic-ghost-pkg">
           <boxGeometry args={[boxWidth, boxHeight, boxDepth]} />
           <meshBasicMaterial
-            color="#808080"
+            color="#ff00ff"
             transparent={true}
-            opacity={0.05}
+            opacity={0.5}
             depthWrite={false}
           />
         </mesh>
-        {/* NO edges for ghost items - keeps it clean */}
       </group>
     )
   }
