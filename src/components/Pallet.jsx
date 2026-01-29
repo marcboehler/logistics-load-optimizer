@@ -13,11 +13,10 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
-  // Determine if this is a ghost (unfocused) pallet
-  const isFocused = opacity >= 1.0
+  // DIAGNOSTIC: FORCE GHOST MODE FOR ALL PALLETS
+  const isActuallyGhost = true // KILL SWITCH - forces ghost for everyone
 
-  // NUCLEAR FIX: Completely separate rendering paths
-  if (isFocused) {
+  if (!isActuallyGhost) {
     // === FOCUSED RENDERING: Full quality with lighting ===
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
@@ -25,7 +24,6 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
           <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
           <meshStandardMaterial color={palletColor} roughness={0.8} />
         </mesh>
-        {/* High-quality edges for focused pallets */}
         <lineSegments>
           <edgesGeometry args={[new THREE.BoxGeometry(palletWidth, palletHeight, palletDepth)]} />
           <lineBasicMaterial color={darkWood} />
@@ -33,19 +31,18 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
       </group>
     )
   } else {
-    // === GHOST RENDERING: Flat unlit, no edges, minimal ===
+    // === DIAGNOSTIC GHOST: MAGENTA TO PROVE THIS PATH WORKS ===
     return (
       <group position={[offsetX, palletHeight / 2, offsetZ]}>
-        <mesh key="ghost-pallet">
+        <mesh key="diagnostic-ghost-pallet">
           <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
           <meshBasicMaterial
-            color="#808080"
+            color="#ff00ff"
             transparent={true}
-            opacity={0.05}
+            opacity={0.5}
             depthWrite={false}
           />
         </mesh>
-        {/* NO edges for ghost pallets - keeps it clean */}
       </group>
     )
   }
