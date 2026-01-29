@@ -669,14 +669,14 @@ export const fillPalletWithProducts = (count, maxHeightM = 2.3, maxWeightKg = 70
 /**
  * Fill a container with multiple pallets
  * Distributes packages across pallets until container capacity is reached
- * Also handles "no container" mode with unlimited grid layout
+ * Also handles "no container" mode with single pallet only
  */
 const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, containerType) => {
   const config = CONTAINER_CONFIG[containerType]
   const maxPalletsAllowed = config ? config.maxPallets : NO_CONTAINER_CONFIG.maxPallets
-  const isContainer = !!config
 
   const pallets = []
+  const allPlacedIds = new Set() // Track ALL placed item IDs across all pallets
   let remainingProducts = [...sortedProducts]
   let palletIndex = 0
   let totalPlacedPackages = []
@@ -719,16 +719,22 @@ const fillContainerWithPallets = (sortedProducts, maxHeightMm, maxWeightKg, cont
     totalPlacedPackages = [...totalPlacedPackages, ...offsetPackages]
     totalWeight += palletResult.totalWeight
 
-    // Remove placed products from remaining
-    const placedIds = new Set(palletResult.packages.map(p => p.id))
-    remainingProducts = remainingProducts.filter(p => !placedIds.has(p.id))
+    // Track ALL placed IDs and remove from remaining pool
+    for (const pkg of palletResult.packages) {
+      allPlacedIds.add(pkg.id)
+    }
+    remainingProducts = remainingProducts.filter(p => !allPlacedIds.has(p.id))
 
     palletIndex++
   }
 
+  // CRITICAL: Only items NOT placed on any pallet go to overflow
+  // Double-check by filtering against allPlacedIds
+  const trueOverflowProducts = sortedProducts.filter(p => !allPlacedIds.has(p.id))
+
   // Calculate overflow (products that couldn't fit in container)
-  const overflowPackages = remainingProducts.length > 0
-    ? calculateContainerOverflowPositions(remainingProducts, containerType)
+  const overflowPackages = trueOverflowProducts.length > 0
+    ? calculateContainerOverflowPositions(trueOverflowProducts, containerType)
     : []
 
   // Calculate container utilization

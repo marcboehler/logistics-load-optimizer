@@ -1,9 +1,13 @@
 import { useMemo, useRef, useEffect } from 'react'
+import * as THREE from 'three'
 import { Canvas, useThree } from '@react-three/fiber'
-import { OrbitControls, Grid, Environment, Line } from '@react-three/drei'
+import { OrbitControls, Grid, Environment, Line, Text } from '@react-three/drei'
 import Pallet from './Pallet'
 import StackedPackage from './StackedPackage'
 import { PALLET, CONTAINER_CONFIG } from '../utils/palletStacking'
+
+// Performance threshold for overflow rendering
+const MAX_VISIBLE_OVERFLOW = 50
 
 // Container dimensions in mm (for backwards compatibility)
 const CONTAINER_SIZES = {
@@ -325,6 +329,61 @@ function PositionedPallet({ scale, position, index, isSelected }) {
   )
 }
 
+// Large overflow placeholder (performance optimization)
+function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM }) {
+  const config = CONTAINER_CONFIG[containerType]
+
+  // Calculate position (same as overflow area)
+  let offsetX = 0
+  let offsetZ = 0
+
+  if (config) {
+    // Container mode: behind container
+    offsetZ = (config.width + 500) * scale
+  } else {
+    // No-container mode: beside pallet
+    offsetX = (PALLET.length + 300) * scale
+  }
+
+  // Placeholder dimensions
+  const width = PALLET.length * scale
+  const depth = PALLET.width * scale
+  const height = maxHeightM * 1.5 // 1.5x max stack height
+
+  const centerX = offsetX + width / 2
+  const centerY = height / 2
+  const centerZ = offsetZ + depth / 2
+
+  return (
+    <group>
+      {/* Large red placeholder box */}
+      <mesh position={[centerX, centerY, centerZ]}>
+        <boxGeometry args={[width, height, depth]} />
+        <meshStandardMaterial color="#FF0000" transparent opacity={0.8} />
+      </mesh>
+
+      {/* Edge lines for visibility */}
+      <lineSegments position={[centerX, centerY, centerZ]}>
+        <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
+        <lineBasicMaterial color="#990000" linewidth={2} />
+      </lineSegments>
+
+      {/* Label above the box */}
+      <Text
+        position={[centerX, height + 0.5, centerZ]}
+        fontSize={0.4}
+        color="#FF0000"
+        anchorX="center"
+        anchorY="bottom"
+        outlineWidth={0.02}
+        outlineColor="#000000"
+      >
+        {`OVERFLOW: ${overflowCount} Items`}
+      </Text>
+    </group>
+  )
+}
+
 function Scene3D({
   packages,
   overflowPackages = [],
@@ -334,8 +393,8 @@ function Scene3D({
   selectedPallet = null
 }) {
   const scale = 0.01
-  const isMultiPallet = containerType !== 'none' && pallets.length > 0
   const hasOverflow = overflowPackages.length > 0
+  const useOverflowPlaceholder = overflowPackages.length > MAX_VISIBLE_OVERFLOW
 
   // Calculate scene bounding box for camera and grid
   const bounds = useMemo(() => {
@@ -413,10 +472,21 @@ function Scene3D({
         </>
       )}
 
-      {/* Overflow packages (red stack) */}
-      {overflowPackages.map((pkg) => (
-        <StackedPackage key={`overflow-${pkg.id}`} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
-      ))}
+      {/* Overflow packages (red stack) - use placeholder for performance when count > threshold */}
+      {hasOverflow && (
+        useOverflowPlaceholder ? (
+          <OverflowPlaceholder
+            scale={scale}
+            containerType={containerType}
+            overflowCount={overflowPackages.length}
+            maxHeightM={maxHeightLimit}
+          />
+        ) : (
+          overflowPackages.map((pkg) => (
+            <StackedPackage key={`overflow-${pkg.id}`} pkg={pkg} scale={scale} palletOffsetX={0} palletOffsetZ={0} />
+          ))
+        )
+      )}
 
       {/* Camera Controls */}
       <OrbitControls
