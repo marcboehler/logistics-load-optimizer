@@ -530,25 +530,26 @@ function Scene3D({
       camera={{ position: [initialDistance, initialDistance * 0.6, initialDistance], fov: 50 }}
       className="w-full h-full"
     >
+      {/* Lighting - outside Selection */}
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[30, 40, 30]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
+      <pointLight position={[-20, 20, -20]} intensity={0.3} />
+      <hemisphereLight intensity={0.3} />
+
+      {/* Environment - outside Selection */}
+      <Environment preset="warehouse" />
+
+      {/* Dynamic Ground Grid - outside Selection */}
+      <DynamicGrid bounds={bounds} />
+
+      {/* Camera Controller for auto-zoom */}
+      <CameraController bounds={bounds} selectedPallet={selectedPallet} pallets={pallets} scale={scale} />
+
+      {/* Container footprint - OUTSIDE Selection to keep solid lines */}
+      <ContainerFootprint containerType={containerType} scale={scale} />
+
+      {/* Selection context ONLY for ghost items that need outline effect */}
       <Selection>
-        {/* Lighting */}
-        <ambientLight intensity={0.4} />
-        <directionalLight position={[30, 40, 30]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
-        <pointLight position={[-20, 20, -20]} intensity={0.3} />
-        <hemisphereLight intensity={0.3} />
-
-        {/* Environment */}
-        <Environment preset="warehouse" />
-
-        {/* Dynamic Ground Grid */}
-        <DynamicGrid bounds={bounds} />
-
-        {/* Camera Controller for auto-zoom */}
-        <CameraController bounds={bounds} selectedPallet={selectedPallet} pallets={pallets} scale={scale} />
-
-        {/* Container footprint */}
-        <ContainerFootprint containerType={containerType} scale={scale} />
-
         {/* Render pallets and packages */}
         {pallets.length > 0 ? (
           <>
@@ -633,24 +634,25 @@ function Scene3D({
         <EffectComposer autoClear={false}>
           <Outline
             visibleEdgeColor={0x94a3b8}
-            hiddenEdgeColor={0x000000}
+            hiddenEdgeColor={0x94a3b8}
             edgeStrength={10}
             width={500}
             blur={false}
+            xRay={true}
           />
         </EffectComposer>
-
-        {/* Camera Controls */}
-        <OrbitControls
-          enablePan={true}
-          enableZoom={true}
-          enableRotate={true}
-          minDistance={5}
-          maxDistance={200}
-          maxPolarAngle={Math.PI / 2 - 0.05}
-          target={cameraTarget}
-        />
       </Selection>
+
+      {/* Camera Controls - outside Selection */}
+      <OrbitControls
+        enablePan={true}
+        enableZoom={true}
+        enableRotate={true}
+        minDistance={5}
+        maxDistance={200}
+        maxPolarAngle={Math.PI / 2 - 0.05}
+        target={cameraTarget}
+      />
     </Canvas>
   )
 }
