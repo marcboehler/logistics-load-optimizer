@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useLanguage } from '../i18n/LanguageContext'
 
 function InputPanel({
@@ -21,10 +20,11 @@ function InputPanel({
   containerUtilization = 0,
   selectedPallet,
   setSelectedPallet,
-  isCalculating = false
+  isCalculating = false,
+  quantity,
+  setQuantity
 }) {
   const { t } = useLanguage()
-  const [quantity, setQuantity] = useState(500)
 
   const handleFillPallet = () => {
     onFillPallet(quantity)
