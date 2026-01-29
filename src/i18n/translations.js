@@ -59,7 +59,7 @@ export const translations = {
     legend: 'Legende',
     light: 'Leicht',
     heavy: 'Schwer',
-    overflow: 'Nicht platziert (Overflow)',
+    overflow: 'Overflow',
 
     // Loading
     calculating: 'Berechne...',
@@ -129,7 +129,7 @@ export const translations = {
     legend: 'Legend',
     light: 'Light',
     heavy: 'Heavy',
-    overflow: 'Not placed (Overflow)',
+    overflow: 'Overflow',
 
     // Loading
     calculating: 'Calculating...',
