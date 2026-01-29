@@ -415,18 +415,21 @@ function OverflowPlaceholder({ scale, containerType, overflowCount, maxHeightM, 
   const boxOpacity = 0.85 * opacity
   const textOpacity = opacity
 
+  // Ghost mode: disable depth write for transparent items to prevent overdraw stacking
+  const isGhost = opacity < 1.0
+
   return (
     <group>
       {/* Large red placeholder box - using meshBasicMaterial for reliability */}
       <mesh position={[centerX, centerY, centerZ]}>
         <boxGeometry args={[width, height, depth]} />
-        <meshBasicMaterial color="#FF0000" transparent opacity={boxOpacity} />
+        <meshBasicMaterial color="#FF0000" transparent opacity={boxOpacity} depthWrite={!isGhost} />
       </mesh>
 
       {/* Edge lines for visibility */}
       <lineSegments position={[centerX, centerY, centerZ]}>
         <edgesGeometry args={[new THREE.BoxGeometry(width, height, depth)]} />
-        <lineBasicMaterial color="#990000" transparent opacity={opacity} />
+        <lineBasicMaterial color="#990000" transparent opacity={opacity} depthWrite={!isGhost} />
       </lineSegments>
 
       {/* Three-line text block - block-justified dark red design */}
@@ -537,8 +540,8 @@ function Scene3D({
       {pallets.length > 0 ? (
         <>
           {pallets.map((pallet) => {
-            // Opacity: 100% if no selection or this pallet is selected, 50% otherwise
-            const palletOpacity = selectedPallet === null || selectedPallet === pallet.index ? 1.0 : 0.5
+            // Opacity: 100% if no selection or this pallet is selected, 5% ghost mode otherwise
+            const palletOpacity = selectedPallet === null || selectedPallet === pallet.index ? 1.0 : 0.05
             return (
               <group key={`pallet-group-${pallet.index}`}>
                 <PositionedPallet
@@ -553,8 +556,8 @@ function Scene3D({
             )
           })}
           {packages.map((pkg) => {
-            // Opacity based on whether this package's pallet is selected
-            const pkgOpacity = selectedPallet === null || pkg.palletIndex === selectedPallet ? 1.0 : 0.5
+            // Opacity based on whether this package's pallet is selected (ghost mode = 5%)
+            const pkgOpacity = selectedPallet === null || pkg.palletIndex === selectedPallet ? 1.0 : 0.05
             return (
               <StackedPackage
                 key={pkg.id}
@@ -584,7 +587,7 @@ function Scene3D({
       )}
 
       {/* Overflow packages (red stack) - use placeholder for performance when count > threshold */}
-      {/* Opacity: 0.5 when a specific pallet is selected, 1.0 otherwise */}
+      {/* Opacity: 5% ghost mode when a specific pallet is selected, 100% otherwise */}
       {hasOverflow && (
         useOverflowPlaceholder ? (
           <OverflowPlaceholder
@@ -592,7 +595,7 @@ function Scene3D({
             containerType={containerType}
             overflowCount={overflowPackages.length}
             maxHeightM={maxHeightLimit}
-            opacity={selectedPallet === null ? 1.0 : 0.5}
+            opacity={selectedPallet === null ? 1.0 : 0.05}
           />
         ) : (
           overflowPackages.map((pkg) => (
@@ -602,7 +605,7 @@ function Scene3D({
               scale={scale}
               palletOffsetX={0}
               palletOffsetZ={0}
-              opacity={selectedPallet === null ? 1.0 : 0.5}
+              opacity={selectedPallet === null ? 1.0 : 0.05}
             />
           ))
         )

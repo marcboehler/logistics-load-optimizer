@@ -14,23 +14,27 @@ function Pallet({ scale = 0.01, opacity = 1.0 }) {
   const offsetX = palletWidth / 2
   const offsetZ = palletDepth / 2
 
+  // Ghost mode: disable depth write for transparent items to prevent overdraw stacking
+  const isGhost = opacity < 1.0
+
   return (
     <group position={[offsetX, palletHeight / 2, offsetZ]}>
       {/* Haupt-Palette als vereinfachter Würfel */}
-      <mesh castShadow receiveShadow>
+      <mesh castShadow={!isGhost} receiveShadow={!isGhost}>
         <boxGeometry args={[palletWidth, palletHeight, palletDepth]} />
         <meshStandardMaterial
           color={palletColor}
           roughness={0.8}
           transparent={true}
           opacity={opacity}
+          depthWrite={!isGhost}
         />
       </mesh>
 
       {/* Kanten-Markierung für bessere Sichtbarkeit */}
       <lineSegments>
         <edgesGeometry args={[new THREE.BoxGeometry(palletWidth, palletHeight, palletDepth)]} />
-        <lineBasicMaterial color={darkWood} transparent={true} opacity={opacity} />
+        <lineBasicMaterial color={darkWood} transparent={true} opacity={opacity} depthWrite={!isGhost} />
       </lineSegments>
     </group>
   )
